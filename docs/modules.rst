@@ -11,7 +11,7 @@ This project is made up of the following modules:
 IO
 ==========================
 
-.. automodule:: sand-atlas.io
+.. automodule:: sand_atlas.io
   :members:
 
 .. _inout:
@@ -19,7 +19,7 @@ IO
 Particle
 ==========================
 
-.. automodule:: pynamix.particle
+.. automodule:: sand_atlas.particle
   :members:
 
 .. _exposure:
@@ -27,7 +27,7 @@ Particle
 Video
 ==========================
 
-.. automodule:: pynamix.video
+.. automodule:: sand_atlas.video
   :members:
 
 .. _io:

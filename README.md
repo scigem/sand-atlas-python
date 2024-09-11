@@ -6,8 +6,7 @@
 ## Installation
 Can be installed via `pip install sand-atlas`. If installing from github, try cloning and then running:
 ```
-python setup.py build
-python setup.py install
+pip install -e .
 ```
 If you make any changes to the source code, re-run those two lines to have your changes reflected in your installed package.
 
