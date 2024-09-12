@@ -31,3 +31,6 @@ Repository = "https://github.com/scigem/sand-atlas-python.git"
 [tool.black]
 line-length = 120
 target-version = ['py39']
+
+[tool.flake8]
+max-line-length = 120

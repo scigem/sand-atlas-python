@@ -2,6 +2,7 @@ import numpy
 import tifffile
 import nrrd
 
+
 def load_data(filename):
     """
     Load data from a file based on its extension.
@@ -14,22 +15,23 @@ def load_data(filename):
         - For '.npz' files, returns an array from numpy.
         - For '.nrrd' files, returns the data and header from nrrd.
     """
-    extension = filename.split('.')[-1]
-    if ( extension.lower() == 'tif' ) or ( extension.lower() == 'tiff'):
+    extension = filename.split(".")[-1]
+    if (extension.lower() == "tif") or (extension.lower() == "tiff"):
         try:
             data = tifffile.memmap(filename)
-        except:
+        except Exception:
             data = tifffile.imread(filename)
-    elif ( extension.lower() == 'raw' ):
+    elif extension.lower() == "raw":
         data = numpy.memmap(filename)
-    elif ( extension.lower() == 'npz' ):
-        data = numpy.load(filename, allow_pickle=True)['arr_0']
-    elif ( extension.lower() == 'nrrd' ):
+    elif extension.lower() == "npz":
+        data = numpy.load(filename, allow_pickle=True)["arr_0"]
+    elif extension.lower() == "nrrd":
         data, header = nrrd.read(filename)
     else:
-        raise ValueError('Unsupported file extension')
-    
+        raise ValueError("Unsupported file extension")
+
     return data
+
 
 def save_data(data, filename):
     """
@@ -48,17 +50,18 @@ def save_data(data, filename):
     Raises:
     ValueError: If the file extension is not supported.
     """
-    extension = filename.split('.')[-1]
-    if ( extension.lower() == 'tif' ) or ( extension.lower() == 'tiff'):
+    extension = filename.split(".")[-1]
+    if (extension.lower() == "tif") or (extension.lower() == "tiff"):
         tifffile.imsave(filename, data)
-    elif ( extension.lower() == 'raw' ):
+    elif extension.lower() == "raw":
         data.tofile(filename)
-    elif ( extension.lower() == 'npz' ):
+    elif extension.lower() == "npz":
         numpy.savez(filename, data)
-    elif ( extension.lower() == 'nrrd' ):
+    elif extension.lower() == "nrrd":
         nrrd.write(filename, data)
     else:
-        raise ValueError('Unsupported file extension')
+        raise ValueError("Unsupported file extension")
+
 
 def convert(input_filename, output_filename):
     """
@@ -73,4 +76,3 @@ def convert(input_filename, output_filename):
     """
     data = load_data(input_filename)
     save_data(data, output_filename)
-

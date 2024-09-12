@@ -3,7 +3,7 @@ Project Modules
 
 This project is made up of the following modules:
        * `io`_
-       * `particle`_
+       * `pipeline`_
        * `video`_
 
 .. _color:
@@ -16,10 +16,10 @@ IO
 
 .. _inout:
 
-Particle
+Pipeline
 ==========================
 
-.. automodule:: sand_atlas.particle
+.. automodule:: sand_atlas.pipeline
   :members:
 
 .. _exposure:
