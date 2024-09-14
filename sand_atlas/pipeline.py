@@ -132,7 +132,6 @@ def get_particle_properties(labelled_data, raw_data, microns_per_voxel):
         properties=("area", "equivalent_diameter", "major_axis_length", "minor_axis_length"),
     )
     df = pd.DataFrame(props)
-    df = df.drop(index=0)  # drop the background
     df["Aspect Ratio"] = df["major_axis_length"] / df["minor_axis_length"]
 
     return df.rename(
@@ -145,7 +144,7 @@ def get_particle_properties(labelled_data, raw_data, microns_per_voxel):
     )
 
 
-def script():
+def full_analysis_script():
     parser = argparse.ArgumentParser(description="Perform a full analysis of a sand sample.")
     parser.add_argument("json", type=str, help="The path to the json file containing the description of the data.")
     parser.add_argument("--raw", type=str, help="The path to the file containing the raw data.", default=None)
@@ -168,6 +167,38 @@ def script():
         blur=args.blur,
         binning=args.binning,
     )
+
+
+def properties_script():
+    parser = argparse.ArgumentParser(description="Perform a full analysis of a sand sample.")
+    parser.add_argument("json", type=str, help="The path to the json file containing the description of the data.")
+    parser.add_argument("label", type=str, help="The path to the file containing the labelled data.", default=None)
+    parser.add_argument("--raw", type=str, help="The path to the file containing the raw data.", default=None)
+    parser.add_argument("--binning", type=int, help="The binning factor to use.", default=None)
+
+    args = parser.parse_args()
+
+    if not os.path.exists(args.json):
+        print("The JSON file does not exist.")
+        return
+    else:
+        json_data = sand_atlas.io.load_json(args.json)
+        microns_per_voxel = float(json_data["microns_per_pixel"])
+        if args.binning is not None:
+            microns_per_voxel *= float(args.binning)
+
+    label_data = sand_atlas.io.load_data(args.label)
+    if args.binning is not None:
+        label_data = label_data[:: args.binning, :: args.binning, :: args.binning]
+    if args.raw is not None:
+        raw_data = sand_atlas.io.load_data(args.raw)
+        if args.binning is not None:
+            raw_data = raw_data[:: args.binning, :: args.binning, :: args.binning]
+    else:
+        raw_data = None
+
+    df = get_particle_properties(label_data, raw_data, microns_per_voxel)
+    df.to_csv("summary.csv", index_label="Particle ID")
 
 
 def full_analysis(

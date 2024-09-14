@@ -25,7 +25,8 @@ classifiers = [
 keywords = ["3d", "volumetric", "meshes", "data", "granular", "sand", "particles"]
 
 [project.scripts]
-sand_atlas_process = "sand_atlas.pipeline:script"
+sand_atlas_process = "sand_atlas.pipeline:full_analysis_script"
+sand_atlas_properties = "sand_atlas.pipeline:properties_script"
 
 [project.urls]
 Homepage = "https://sand-atlas.scigem.com"
