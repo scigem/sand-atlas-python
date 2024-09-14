@@ -4,7 +4,9 @@
 [Documentation here](https://scigem.github.io/sand-atlas-python/build/html/index.html), or compile it yourself following the details below.
 
 ## Installation
-Can be installed via `pip install sand-atlas`. If installing from github, try cloning and then running:
+First, install `ffmpeg` and `blender` on your system. Both of these need to be available in your system path (so that running `ffmpeg` and `blender` in the command line works).
+
+This package can then be installed via `pip install sand-atlas`. If installing from github, try cloning and then running:
 ```
 pip install -e .
 ```
