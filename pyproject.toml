@@ -15,6 +15,7 @@ dependencies = [
     "flake8",
     "numpy",
     "sphinx",
+    "nbsphinx"
 ]
 requires-python = ">=3.8"
 readme = "README.md"
