@@ -7,6 +7,7 @@ import numpy
 import tifffile
 import nrrd
 import json
+import h5py
 
 
 def load_data(filename):
@@ -33,6 +34,10 @@ def load_data(filename):
         data = numpy.load(filename, allow_pickle=True)["arr_0"]
     elif extension.lower() == "nrrd":
         data, header = nrrd.read(filename)
+    elif extension.lower() == "h5":
+        with h5py.File(filename, "r") as f:
+            keys = list(f.keys())
+            data = f[keys[0]]
     else:
         raise ValueError("Unsupported file extension")
 

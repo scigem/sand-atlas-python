@@ -91,7 +91,7 @@ def make_website_video(stl_foldername, output_foldername):
         os.system("rm grid_*.webm")
 
 
-def make_instagram_videos(stl_foldername, output_foldername):
+def make_individual_videos(stl_foldername, output_foldername):
 
     print("Rendering videos for IG...")
     files = glob.glob(f"{stl_foldername}/*.stl")

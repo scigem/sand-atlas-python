@@ -14,8 +14,13 @@ dependencies = [
     "black",
     "flake8",
     "numpy",
+    "pandas",
+    "scikit-image",
     "sphinx",
-    "nbsphinx"
+    "nbsphinx",
+    "tifffile",
+    "nrrd",
+    "h5py"
 ]
 requires-python = ">=3.8"
 readme = "README.md"
