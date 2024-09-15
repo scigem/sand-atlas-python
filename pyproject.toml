@@ -19,7 +19,7 @@ dependencies = [
     "sphinx",
     "nbsphinx",
     "tifffile",
-    "nrrd",
+    "pynrrd",
     "h5py"
 ]
 requires-python = ">=3.8"
