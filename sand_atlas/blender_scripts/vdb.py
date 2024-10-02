@@ -97,6 +97,9 @@ for quality in ["ORIGINAL", "100", "30", "10", "3"]:
     # Scale the mesh based on the voxel size
     mesh_obj.scale = (voxel_size_m, voxel_size_m, voxel_size_m)
 
+    # Set the origin of the mesh to the center of the volume
+    bpy.ops.object.origin_set(type='ORIGIN_CENTER_OF_VOLUME', center='MEDIAN')
+
     # Export the mesh as an STL file
     output_path = (
         f"{input_folder}/stl_{quality}/{particle_name}.stl"  # Set the output file path
