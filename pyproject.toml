@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sand-atlas"
-version = "1.0.0"
+version = "1.1.0"
 authors = [
     {name = "Benjy Marks", email = "benjy.marks@sydney.edu.au"},
     {name = "Ilija Vego", email = "ilija.vego@sydney.edu.au"}
@@ -40,7 +40,7 @@ Repository = "https://github.com/scigem/sand-atlas-python.git"
 
 [tool.black]
 line-length = 120
-target-version = ['py39']
+target-version = ['py312']
 
 [tool.flake8]
 max-line-length = 120
