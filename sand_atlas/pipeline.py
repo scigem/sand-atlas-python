@@ -79,6 +79,22 @@ def label_binary_data(binary_data, minimum_voxels=100):
 
 
 def labelled_image_to_mesh(labelled_data, sand_type, microns_per_voxel, output_dir, debug=False):
+    """
+    Converts labelled image data to 3D mesh files using Blender.
+
+    Parameters:
+    labelled_data (numpy.ndarray): 3D array where each voxel is labelled with an integer indicating the particle it belongs to.
+    sand_type (str): Type of sand being processed.
+    microns_per_voxel (float): Size of each voxel in microns.
+    output_dir (str): Directory where output files will be saved.
+    debug (bool, optional): If True, enables debug mode. Default is False.
+
+    Returns:
+    None
+
+    This function processes the labelled image data to identify individual particles, filters out particles touching the edges,
+    and saves each particle as a .npy file. It then calls a Blender script to convert these .npy files into 3D mesh files.
+    """
     current_file_path = os.path.abspath(__file__)
     blender_script_path = os.path.join(os.path.dirname(current_file_path), "blender_scripts", "vdb.py")
 
@@ -144,6 +160,22 @@ def labelled_image_to_mesh(labelled_data, sand_type, microns_per_voxel, output_d
 
 
 def get_particle_properties(labelled_data, raw_data, microns_per_voxel):
+    """
+    Calculate particle properties from labelled and raw image data.
+
+    Parameters:
+    labelled_data (ndarray): The labelled image data where each particle is assigned a unique label.
+    raw_data (ndarray): The raw intensity image data.
+    microns_per_voxel (float): The size of each voxel in microns.
+
+    Returns:
+    DataFrame: A pandas DataFrame containing the calculated properties for each particle:
+    - Volume (µm³): The volume of each particle.
+    - Equivalent Diameter (µm): The diameter of a sphere with the same volume as the particle.
+    - Major Axis Length (µm): The length of the major axis of the particle.
+    - Minor Axis Length (µm): The length of the minor axis of the particle.
+    - Aspect Ratio: The ratio of the major axis length to the minor axis length.
+    """
 
     props = regionprops_table(
         labelled_data,
@@ -167,6 +199,27 @@ def get_particle_properties(labelled_data, raw_data, microns_per_voxel):
 
 
 def full_analysis_script():
+    """
+    Perform a full analysis of a sand sample based on provided arguments.
+
+    This function sets up an argument parser to handle command-line arguments for analyzing a sand sample.
+    It requires a JSON file describing the data and optionally accepts paths to raw and labelled data files,
+    a threshold value, a sigma value for Gaussian blur, and a binning factor.
+
+    Command-line Arguments:
+    - json (str): The path to the JSON file containing the description of the data.
+    - --raw (str, optional): The path to the file containing the raw data. Default is None.
+    - --label (str, optional): The path to the file containing the labelled data. Default is None.
+    - --threshold (int, optional): The threshold value to use. Default is None.
+    - --blur (float, optional): The sigma value for Gaussian blur. Default is None.
+    - --binning (int, optional): The binning factor to use. Default is None.
+
+    Returns:
+    None
+
+    Raises:
+    SystemExit: If neither raw data file nor labelled data file is provided.
+    """
     parser = argparse.ArgumentParser(description="Perform a full analysis of a sand sample.")
     parser.add_argument("json", type=str, help="The path to the json file containing the description of the data.")
     parser.add_argument("--raw", type=str, help="The path to the file containing the raw data.", default=None)
@@ -192,6 +245,31 @@ def full_analysis_script():
 
 
 def properties_script():
+    """
+    Perform a full analysis of a sand sample based on provided JSON and label data files.
+
+    This script processes the input JSON file to extract metadata and uses the label data file
+    to compute particle properties. Optionally, raw data and binning factor can be provided
+    to adjust the analysis.
+
+    Command-line Arguments:
+    - json (str): The path to the JSON file containing the description of the data.
+    - label (str): The path to the file containing the labelled data.
+    - raw (str, optional): The path to the file containing the raw data. Default is None.
+    - binning (int, optional): The binning factor to use. Default is None.
+
+    The script performs the following steps:
+    1. Parses command-line arguments.
+    2. Validates the existence of the JSON file.
+    3. Loads and processes the JSON data to extract the microns per voxel.
+    4. Loads and optionally bins the label data.
+    5. Loads and optionally bins the raw data if provided.
+    6. Computes particle properties using the label and raw data.
+    7. Saves the computed properties to a CSV file named "summary.csv".
+
+    Returns:
+    None
+    """
     parser = argparse.ArgumentParser(description="Perform a full analysis of a sand sample.")
     parser.add_argument("json", type=str, help="The path to the json file containing the description of the data.")
     parser.add_argument("label", type=str, help="The path to the file containing the labelled data.", default=None)
@@ -223,9 +301,32 @@ def properties_script():
     df.to_csv("summary.csv", index_label="Particle ID")
 
 
-def full_analysis(
-    json_filename, raw_data_filename=None, labelled_data_filename=None, threshold=None, blur=None, binning=None
-):
+def full_analysis(json_filename, raw_data_filename=None, labelled_data_filename=None, threshold=None, blur=None, binning=None):
+    """
+    Perform a full analysis of sand particle data.
+
+    This function performs a comprehensive analysis of sand particle data, including loading raw and labelled data,
+    processing the data, generating 3D meshes, creating videos, and saving results.
+
+    Parameters:
+    -----------
+    json_filename : str
+        Path to the JSON file containing metadata and configuration.
+    raw_data_filename : str, optional
+        Path to the raw data file. If None, the function will skip loading raw data.
+    labelled_data_filename : str, optional
+        Path to the labelled data file. If None, the function will generate labelled data from raw data.
+    threshold : float, optional
+        Threshold value for converting grayscale images to binary images. Used if labelled data needs to be generated.
+    blur : float, optional
+        Blur value for preprocessing the raw data before thresholding. Used if labelled data needs to be generated.
+    binning : int, optional
+        Binning factor to downsample the data. If provided, the data will be downsampled by this factor.
+
+    Returns:
+    --------
+    None
+    """
     sand_atlas.io.check_blender_command()
     sand_atlas.io.check_ffmpeg_command()
 

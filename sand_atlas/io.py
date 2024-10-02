@@ -17,10 +17,10 @@ def load_data(filename):
     filename (str): The path to the file to be loaded.
     Returns:
     data: The data loaded from the file. The type of data returned depends on the file extension:
-        - For '.tif' or '.tiff' files, returns a memmap or an array from tifffile.
-        - For '.raw' files, returns a memmap from numpy.
-        - For '.npz' files, returns an array from numpy.
-        - For '.nrrd' files, returns the data and header from nrrd.
+    - For '.tif' or '.tiff' files, returns a memmap or an array from tifffile.
+    - For '.raw' files, returns a memmap from numpy.
+    - For '.npz' files, returns an array from numpy.
+    - For '.nrrd' files, returns the data and header from nrrd.
     """
     extension = filename.split(".")[-1]
     if (extension.lower() == "tif") or (extension.lower() == "tiff"):

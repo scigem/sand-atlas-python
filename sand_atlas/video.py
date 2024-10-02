@@ -18,6 +18,27 @@ blender_script_path = os.path.join(os.path.dirname(current_file_path), "blender_
 
 
 def make_website_video(stl_foldername, output_foldername):
+    """
+    Generates a video from STL files by rendering them, converting to webm format, 
+    and stitching them together into a grid.
+
+    Parameters:
+    stl_foldername (str): The folder containing the STL files.
+    output_foldername (str): The folder where the final video will be saved.
+
+    Steps:
+    1. Create a blank webm video if it doesn't exist.
+    2. Render each STL file into a webm video using Blender and ffmpeg.
+    3. Stitch the individual videos into a grid format.
+    4. Concatenate the grids into a single video.
+    5. Reduce the file size of the final video.
+    6. Clean up intermediate files if not in debug mode.
+
+    Note:
+    - Assumes the presence of Blender and ffmpeg in the system path.
+    - Uses a maximum of 72 STL files for the video.
+    - Pads the grid with blank videos if the number of STL files is less than 72.
+    """
 
     if not os.path.exists(f"{stl_foldername}/blank.webm"):
         matplotlib.image.imsave(f"{stl_foldername}/blank.png", numpy.zeros((1000, 1000, 4)))
@@ -92,6 +113,27 @@ def make_website_video(stl_foldername, output_foldername):
 
 
 def make_individual_videos(stl_foldername, output_foldername):
+    """
+    Renders individual videos for each STL file in the specified folder.
+
+    This function processes each STL file in the given folder, renders a rotating animation
+    using Blender, converts the animation into a video using ffmpeg, and saves the video
+    to the specified output folder.
+
+    Args:
+        stl_foldername (str): The path to the folder containing STL files.
+        output_foldername (str): The path to the folder where the output videos will be saved.
+
+    Returns:
+        None
+
+    Notes:
+        - The function assumes Blender and ffmpeg are installed and available in the system's PATH.
+        - The Blender script path should be defined in the variable `blender_script_path`.
+        - The function uses 120 frames to create a 4-second video at 30 frames per second.
+        - If the `debug` variable is set to False, the rendered images are cleaned up after the video is created.
+        - The videos are named sequentially as `particle_XXXXX.mp4` in the output folder.
+    """
 
     print("Rendering videos for IG...")
     files = glob.glob(f"{stl_foldername}/*.stl")

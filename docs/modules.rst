@@ -1,12 +1,12 @@
-Project Modules
-===============
+.. _data:
 
-This project is made up of the following modules:
-       * `io`_
-       * `pipeline`_
-       * `video`_
+Data
+==========================
 
-.. _color:
+.. automodule:: sand_atlas.data
+  :members:
+
+.. _io:
 
 IO
 ==========================
@@ -14,7 +14,7 @@ IO
 .. automodule:: sand_atlas.io
   :members:
 
-.. _inout:
+.. _pipeline:
 
 Pipeline
 ==========================
@@ -22,12 +22,10 @@ Pipeline
 .. automodule:: sand_atlas.pipeline
   :members:
 
-.. _exposure:
+.. _video:
 
 Video
 ==========================
 
 .. automodule:: sand_atlas.video
   :members:
-
-.. _io:
