@@ -289,11 +289,11 @@ def properties_script():
 
     label_data = sand_atlas.io.load_data(args.label)
     if args.binning is not None:
-        label_data = label_data[:: args.binning, :: args.binning, :: args.binning]
+        label_data = bin_data(label_data, args.binning)
     if args.raw is not None:
         raw_data = sand_atlas.io.load_data(args.raw)
         if args.binning is not None:
-            raw_data = raw_data[:: args.binning, :: args.binning, :: args.binning]
+            raw_data = bin_data(raw_data, args.binning)
     else:
         raw_data = None
 
@@ -349,7 +349,7 @@ def full_analysis(json_filename, raw_data_filename=None, labelled_data_filename=
     if raw_data_filename is not None:
         raw_data = sand_atlas.io.load_data(raw_data_filename)
         if binning is not None:
-            raw_data = raw_data[::binning, ::binning, ::binning]
+            raw_data = bin_data(raw_data, binning)
 
     if labelled_data_filename is None:
         labelled_data_filename = f"{output_dir}/upload/{sand_type}-labelled.tif"
@@ -359,7 +359,7 @@ def full_analysis(json_filename, raw_data_filename=None, labelled_data_filename=
     if os.path.exists(labelled_data_filename):
         labelled_data = sand_atlas.io.load_data(labelled_data_filename)
         if binning is not None:
-            labelled_data = labelled_data[::binning, ::binning, ::binning]
+            labelled_data = bin_data(labelled_data, binning)
     else:
         binary_data = gray_to_bw(raw_data, threshold, blur)
         labelled_data = label_binary_data(binary_data)
@@ -383,3 +383,37 @@ def full_analysis(json_filename, raw_data_filename=None, labelled_data_filename=
         os.system(f"cp {raw_data_filename} {output_dir}/upload/{sand_type}-raw.tif")
     if not os.path.exists(f"{output_dir}/upload/{sand_type}-labelled.tif"):
         os.system(f"cp {labelled_data_filename} {output_dir}/upload/{sand_type}-labelled.tif")
+
+
+def bin_data(data, factor):
+    """
+    Downsample a 3D data array by a given factor.
+
+    Parameters:
+    data (numpy.ndarray): The 3D data array to be downsampled.
+    factor (int): The downsampling factor.
+
+    Returns:
+    numpy.ndarray: The downsampled 3D data array.
+    """
+    
+    # return data[::factor, ::factor, ::factor]
+
+    # Trim the array to make each dimension divisible by the factor
+    trimmed_shape = (data.shape[0] - data.shape[0] % factor,
+                    data.shape[1] - data.shape[1] % factor,
+                    data.shape[2] - data.shape[2] % factor)
+
+    trimmed_array = data[:trimmed_shape[0], :trimmed_shape[1], :trimmed_shape[2]]
+
+    # Calculate the shape of the downscaled array
+    new_shape = (trimmed_shape[0] // factor, trimmed_shape[1] // factor, trimmed_shape[2] // factor)
+
+
+    # Reshape and compute the median for each block
+    downscaled_array = numpy.median(
+        trimmed_array.reshape(new_shape[0], factor, new_shape[1], factor, new_shape[2], factor),
+        axis=(1, 3, 5)
+    )
+    
+    return downscaled_array
