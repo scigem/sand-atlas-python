@@ -112,7 +112,7 @@ def make_website_video(stl_foldername, output_foldername):
         os.system("rm grid_*.webm")
 
 
-def make_individual_videos(stl_foldername, output_foldername):
+def make_individual_videos(stl_foldername, output_foldername, bg_colour=None, fg_colour=None):
     """
     Renders individual videos for each STL file in the specified folder.
 
@@ -149,9 +149,10 @@ def make_individual_videos(stl_foldername, output_foldername):
             # Use blender to render an animation of this grain rotating
             os.system(
                 f"blender --background -t 4 --python {blender_script_path} -- "
-                + file
-                + " 120 "  # 120 frames to make a 4 second video
-                + " > /dev/null 2>&1"
+                + f" --filename {file} " 
+                + f"--frame_end 120 "  # 120 frames to make a 4 second video
+                + f"--bg_colour {bg_colour} --fg_colour {fg_colour}"
+                # + " > /dev/null 2>&1"
             )
             # Use ffmpeg to convert the animation into a webm video
             os.system(

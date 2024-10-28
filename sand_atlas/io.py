@@ -8,6 +8,7 @@ import tifffile
 import nrrd
 import json
 import h5py
+from cloudvolume import CloudVolume
 
 
 def load_data(filename):
@@ -61,7 +62,9 @@ def save_data(data, filename):
     Raises:
     ValueError: If the file extension is not supported.
     """
+    root_dir = "/".join(filename.split("/")[:-1])
     extension = filename.split(".")[-1]
+
     if (extension.lower() == "tif") or (extension.lower() == "tiff"):
         tifffile.imsave(filename, data)
     elif extension.lower() == "raw":
@@ -70,6 +73,33 @@ def save_data(data, filename):
         numpy.savez(filename, data)
     elif extension.lower() == "nrrd":
         nrrd.write(filename, data)
+    elif extension.lower() == "h5":
+        with h5py.File(filename, "w") as f:
+            f.create_dataset("arr_0", data=data)
+    elif extension.lower() == "neuroglancer":
+        # Create the directory for Neuroglancer Precomputed output
+        output_path = root_dir + '/neuroglancer'
+        os.makedirs(output_path, exist_ok=True)
+
+        # Specify the layer properties
+        info = CloudVolume.create_new_info(
+            num_channels=1,  # or more if it's a multi-channel TIFF
+            layer_type='segmentation',  # or 'image' if you're working with an image layer
+            data_type=data.dtype,  # or match your data type (e.g., uint8, float32)
+            encoding='raw',  # raw encoding for segmentation (use 'jpeg' or 'compressed_segmentation' for image data)
+            resolution=[1, 1, 1],  # voxel resolution, set appropriately
+            voxel_offset=[0, 0, 0],  # starting point in your coordinate system
+            chunk_size=[64, 64, 64],  # size of chunks (tune for performance)
+            volume_size=data.shape,  # shape in (X, Y, Z)
+        )
+
+        # Create the CloudVolume and add the image data
+        vol = CloudVolume(f'file://{output_path}', info=info, compress=False)
+        vol.commit_info()
+
+        # Add the tiff data to the volume
+        vol[:,:,:] = data
+        # vol[:, :, :] = numpy.expand_dims(data, axis=-1)  # Expand dimensions if necessary
     else:
         raise ValueError("Unsupported file extension")
 

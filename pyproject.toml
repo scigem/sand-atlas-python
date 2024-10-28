@@ -20,7 +20,8 @@ dependencies = [
     "nbsphinx",
     "tifffile",
     "pynrrd",
-    "h5py"
+    "h5py",
+    "cloud-volume"
 ]
 requires-python = ">=3.8"
 readme = "README.md"
