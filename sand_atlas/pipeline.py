@@ -223,6 +223,19 @@ def properties_script():
     df.to_csv("summary.csv", index_label="Particle ID")
 
 
+def vdb_to_npy():
+    sand_atlas.io.check_blender_command()
+
+    parser = argparse.ArgumentParser(description="Convert a vbd file to a numpy npy file.")
+    parser.add_argument("vdb_filename", type=str, help="The path to the VDB file.")
+
+    args = parser.parse_args()
+    current_file_path = os.path.abspath(__file__)
+    blender_script_path = os.path.join(os.path.dirname(current_file_path), "blender_scripts", "vdb_to_npy.py")
+
+    subprocess.run(["blender", "--background", "--python", blender_script_path, "--", args.vdb_filename])
+
+
 def full_analysis(
     json_filename, raw_data_filename=None, labelled_data_filename=None, threshold=None, blur=None, binning=None
 ):

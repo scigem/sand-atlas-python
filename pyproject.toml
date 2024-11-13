@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sand-atlas"
-version = "1.1.0"
+version = "1.1.1"
 authors = [
     {name = "Benjy Marks", email = "benjy.marks@sydney.edu.au"},
     {name = "Ilija Vego", email = "ilija.vego@sydney.edu.au"}
@@ -32,6 +32,7 @@ keywords = ["3d", "volumetric", "meshes", "data", "granular", "sand", "particles
 [project.scripts]
 sand_atlas_process = "sand_atlas.pipeline:full_analysis_script"
 sand_atlas_properties = "sand_atlas.pipeline:properties_script"
+vdb_to_npy = "sand_atlas.pipeline:vdb_to_npy"
 
 [project.urls]
 Homepage = "https://sand-atlas.scigem.com"
