@@ -20,15 +20,18 @@ dependencies = [
     "nbsphinx",
     "tifffile",
     "pynrrd",
-    "h5py",
-    "cloud-volume"
+    "h5py"
 ]
+
 requires-python = ">=3.8"
 readme = "README.md"
 classifiers = [
     "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)"
 ]
 keywords = ["3d", "volumetric", "meshes", "data", "granular", "sand", "particles"]
+
+[project.optional-dependencies]
+neuroglancer  = [ "cloud-volume" ]
 
 [project.scripts]
 sand_atlas_process = "sand_atlas.pipeline:full_analysis_script"
