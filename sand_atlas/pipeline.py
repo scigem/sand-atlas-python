@@ -301,8 +301,22 @@ def properties_script():
     df.to_csv("summary.csv", index_label="Particle ID")
 
 
-<<<<<<< HEAD
 def vdb_to_npy():
+    """
+    Converts a VDB file to a NumPy .npy file using a Blender script.
+
+    This function checks if the Blender command is available, parses the command-line arguments to get the VDB filename,
+    constructs the path to the Blender script, and runs the Blender script in the background to perform the conversion.
+
+    Args:
+        None
+
+    Command-line Arguments:
+        vdb_filename (str): The path to the VDB file to be converted.
+
+    Raises:
+        SystemExit: If the Blender command is not available or if there are issues with the command-line arguments.
+    """
     sand_atlas.io.check_blender_command()
 
     parser = argparse.ArgumentParser(description="Convert a vbd file to a numpy npy file.")
@@ -318,8 +332,6 @@ def vdb_to_npy():
 def full_analysis(
     json_filename, raw_data_filename=None, labelled_data_filename=None, threshold=None, blur=None, binning=None
 ):
-=======
-def full_analysis(json_filename, raw_data_filename=None, labelled_data_filename=None, threshold=None, blur=None, binning=None):
     """
     Perform a full analysis of sand particle data.
 
@@ -345,7 +357,6 @@ def full_analysis(json_filename, raw_data_filename=None, labelled_data_filename=
     --------
     None
     """
->>>>>>> c044eab235d32edc3b78ae4d1c5e75eea70c7e17
     sand_atlas.io.check_blender_command()
     sand_atlas.io.check_ffmpeg_command()
 
@@ -415,24 +426,24 @@ def bin_data(data, factor):
     Returns:
     numpy.ndarray: The downsampled 3D data array.
     """
-    
+
     # return data[::factor, ::factor, ::factor]
 
     # Trim the array to make each dimension divisible by the factor
-    trimmed_shape = (data.shape[0] - data.shape[0] % factor,
-                    data.shape[1] - data.shape[1] % factor,
-                    data.shape[2] - data.shape[2] % factor)
+    trimmed_shape = (
+        data.shape[0] - data.shape[0] % factor,
+        data.shape[1] - data.shape[1] % factor,
+        data.shape[2] - data.shape[2] % factor,
+    )
 
-    trimmed_array = data[:trimmed_shape[0], :trimmed_shape[1], :trimmed_shape[2]]
+    trimmed_array = data[: trimmed_shape[0], : trimmed_shape[1], : trimmed_shape[2]]
 
     # Calculate the shape of the downscaled array
     new_shape = (trimmed_shape[0] // factor, trimmed_shape[1] // factor, trimmed_shape[2] // factor)
 
-
     # Reshape and compute the median for each block
     downscaled_array = numpy.median(
-        trimmed_array.reshape(new_shape[0], factor, new_shape[1], factor, new_shape[2], factor),
-        axis=(1, 3, 5)
+        trimmed_array.reshape(new_shape[0], factor, new_shape[1], factor, new_shape[2], factor), axis=(1, 3, 5)
     )
-    
+
     return downscaled_array

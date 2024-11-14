@@ -19,9 +19,7 @@ else:
 data = numpy.load(input_file)
 
 # outname = ".".join(input_file.split(".")[:-1])
-input_folder = "/".join(
-    input_file.split("/")[:-2]
-)  # Get the folder name stripping the "npy" part too
+input_folder = "/".join(input_file.split("/")[:-2])  # Get the folder name stripping the "npy" part too
 particle_name = input_file.split("/")[-1].split(".")[0]
 
 grid = pyopenvdb.FloatGrid()
@@ -55,12 +53,8 @@ volume_to_mesh_modifier = cube.modifiers.new(name="VolumeToMesh", type="VOLUME_T
 bpy.context.object.modifiers["VolumeToMesh"].object = bpy.data.objects["volume"]
 
 # Set the parameters for the "Volume to Mesh" modifier
-volume_to_mesh_modifier.resolution_mode = (
-    "VOXEL_SIZE"  # Options: 'GRID', 'VOXEL_AMOUNT', 'VOXEL_SIZE'
-)
-volume_to_mesh_modifier.threshold = (
-    0.5  # Set the threshold for the volume to mesh conversion
-)
+volume_to_mesh_modifier.resolution_mode = "VOXEL_SIZE"  # Options: 'GRID', 'VOXEL_AMOUNT', 'VOXEL_SIZE'
+volume_to_mesh_modifier.threshold = 0.5  # Set the threshold for the volume to mesh conversion
 
 # Adjust the voxel size for fineness
 volume_to_mesh_modifier.voxel_size = 1.0
@@ -98,15 +92,11 @@ for quality in ["ORIGINAL", "100", "30", "10", "3"]:
     mesh_obj.scale = (voxel_size_m, voxel_size_m, voxel_size_m)
 
     # Set the origin of the mesh to the center of the volume
-    bpy.ops.object.origin_set(type='ORIGIN_CENTER_OF_VOLUME', center='MEDIAN')
+    bpy.ops.object.origin_set(type="ORIGIN_CENTER_OF_VOLUME", center="MEDIAN")
 
     # Export the mesh as an STL file
-    output_path = (
-        f"{input_folder}/stl_{quality}/{particle_name}.stl"  # Set the output file path
-    )
-    bpy.ops.wm.stl_export(
-        filepath=output_path, export_selected_objects=True, apply_modifiers=True
-    )
+    output_path = f"{input_folder}/stl_{quality}/{particle_name}.stl"  # Set the output file path
+    bpy.ops.wm.stl_export(filepath=output_path, export_selected_objects=True, apply_modifiers=True)
 
 # Set the grid as a level set
 grid.transform = pyopenvdb.createLinearTransform(voxelSize=1.0)
@@ -114,3 +104,12 @@ grid.transform = pyopenvdb.createLinearTransform(voxelSize=1.0)
 # Write the grid to a VDB file
 output_path = f"{input_folder}/vdb/{particle_name}.vdb"
 pyopenvdb.write(output_path, grids=[grid])
+
+
+# Write the grid to a NPY file
+bbox = grid.evalActiveVoxelBoundingBox()
+output_path = f"{input_folder}/npy/{particle_name}.npy"
+array = numpy.zeros([bbox[1][0] - bbox[0][0], bbox[1][1] - bbox[0][1], bbox[1][2] - bbox[0][2]])
+grid.copyToArray(array)
+
+numpy.save(output_path, array)
