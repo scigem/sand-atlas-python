@@ -108,8 +108,11 @@ pyopenvdb.write(output_path, grids=[grid])
 
 # Write the grid to a NPY file
 bbox = grid.evalActiveVoxelBoundingBox()
-output_path = f"{input_folder}/npy/{particle_name}.npy"
+output_path = f"{input_folder}/yade/{particle_name}.npy"
 array = numpy.zeros([bbox[1][0] - bbox[0][0], bbox[1][1] - bbox[0][1], bbox[1][2] - bbox[0][2]])
 grid.copyToArray(array)
 
 numpy.save(output_path, array)
+
+output_path = f"{input_folder}/yade/voxel_size_m.txt"
+numpy.savetxt(output_path, [voxel_size_m], fmt="%f")

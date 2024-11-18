@@ -102,7 +102,7 @@ def labelled_image_to_mesh(labelled_data, sand_type, microns_per_voxel, output_d
     if not os.path.exists(output_dir):
         os.mkdir({output_dir})
 
-    for subfolder in ["npy", "stl_3", "stl_10", "stl_30", "stl_100", "stl_ORIGINAL", "vdb"]:
+    for subfolder in ["npy", "stl_3", "stl_10", "stl_30", "stl_100", "stl_ORIGINAL", "vdb", "yade"]:
         if not os.path.exists(f"{output_dir}/{subfolder}/"):
             os.mkdir(f"{output_dir}/{subfolder}/")
 
@@ -289,7 +289,8 @@ def properties_script():
 
     label_data = sand_atlas.io.load_data(args.label)
     if args.binning is not None:
-        label_data = bin_data(label_data, args.binning)
+        # TODO: This needs to be checked that it preserves the labels!!!
+        label_data = bin_data(label_data, args.binning).astype(int)
     if args.raw is not None:
         raw_data = sand_atlas.io.load_data(args.raw)
         if args.binning is not None:

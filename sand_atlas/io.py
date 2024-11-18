@@ -212,3 +212,4 @@ def make_zips(data_foldername, output_foldername):
             f"cp {data_foldername}/stl_{quality}/particle_00001.stl {output_foldername}/ref_particle_{quality}.stl"
         )
     os.system(f"zip -j {output_foldername}/level_sets.zip {data_foldername}/vdb/*.vdb")
+    os.system(f"zip -j {output_foldername}/level_sets_YADE.zip {data_foldername}/yade/*.npy")
