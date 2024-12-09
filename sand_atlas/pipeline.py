@@ -9,7 +9,7 @@ from skimage.morphology import closing
 from skimage.filters import threshold_otsu, gaussian
 import sand_atlas.io
 import sand_atlas.video
-
+import sand_atlas.particle
 
 def gray_to_bw(data, threshold=None, blur=None):
     """
@@ -95,8 +95,7 @@ def labelled_image_to_mesh(labelled_data, sand_type, microns_per_voxel, output_d
     This function processes the labelled image data to identify individual particles, filters out particles touching the edges,
     and saves each particle as a .npy file. It then calls a Blender script to convert these .npy files into 3D mesh files.
     """
-    current_file_path = os.path.abspath(__file__)
-    blender_script_path = os.path.join(os.path.dirname(current_file_path), "blender_scripts", "vdb.py")
+    blender_script_path = sand_atlas.video.resolve_path_for_blender("blender_scripts/vdb.py")
 
     voxel_size_m = microns_per_voxel * 1e-6
     if not os.path.exists(output_dir):
@@ -136,17 +135,20 @@ def labelled_image_to_mesh(labelled_data, sand_type, microns_per_voxel, output_d
 
             this_particle = crop == props[i].label
 
+            this_particle = remove_disconnected_regions(this_particle)
+
             this_particle = numpy.pad(this_particle, 1, mode="constant")
 
             outname = f"{output_dir}/npy/particle_{props[i].label:05}.npy"
             numpy.save(outname, this_particle)
 
-            print(str(voxel_size_m))
+            # print(str(voxel_size_m))
 
             subprocess.run(
                 [
                     "blender",
                     "--background",
+                    "-noaudio",
                     "--python",
                     blender_script_path,
                     "--",
@@ -159,13 +161,40 @@ def labelled_image_to_mesh(labelled_data, sand_type, microns_per_voxel, output_d
     print(f"{j} out of {num_particles} particles saved to disk")
 
 
-def get_particle_properties(labelled_data, raw_data, microns_per_voxel):
+def remove_disconnected_regions(crop):
+    """
+    Remove disconnected regions from a binary mask, keeping only the largest connected component.
+    Parameters:
+    crop (numpy.ndarray): A binary mask where the connected components are to be identified.
+    Returns:
+    numpy.ndarray: A binary mask with only the largest connected component retained.
+    """
+
+    # Label connected components within this mask
+    connected_components = label(crop > 0)
+
+    # Find the size of each connected component
+    component_sizes = numpy.bincount(connected_components.ravel())
+
+    # Ignore the background (component 0)
+    component_sizes[0] = 0
+
+    # Find the largest connected component
+    largest_component = numpy.argmax(component_sizes)
+
+    # Add the largest component to the cleaned labels
+    cleaned_crop = numpy.zeros_like(crop, dtype=bool)
+    cleaned_crop[connected_components == largest_component] = True
+    
+    return cleaned_crop
+
+
+def get_particle_properties(labelled_data, microns_per_voxel):
     """
     Calculate particle properties from labelled and raw image data.
 
     Parameters:
     labelled_data (ndarray): The labelled image data where each particle is assigned a unique label.
-    raw_data (ndarray): The raw intensity image data.
     microns_per_voxel (float): The size of each voxel in microns.
 
     Returns:
@@ -177,25 +206,61 @@ def get_particle_properties(labelled_data, raw_data, microns_per_voxel):
     - Aspect Ratio: The ratio of the major axis length to the minor axis length.
     """
 
-    props = regionprops_table(
-        labelled_data,
-        intensity_image=raw_data,
-        spacing=(microns_per_voxel, microns_per_voxel, microns_per_voxel),
-        properties=("area", "equivalent_diameter", "major_axis_length", "minor_axis_length"),
-    )
+    import spam.label
 
-    df = pd.DataFrame(props)
+    header = ['Volume (µm³)', 'Equivalent Diameter (µm)',
+        'Major Axis Length (µm)', 'Middle Axis Length (µm)', 'Minor Axis Length (µm)',
+        # 'Major Eigenvector','Middle Eigenvector','Minor Eigenvector',
+        'True Sphericity (-)', 'Convexity (-)', 'Flatness (-)', 'Elongation (-)',
+        'Compactness (-)'
+        ]
+    
+    output = numpy.zeros((numpy.amax(labelled_data), len(header)))
+    
+    # output[:, 0] = numpy.unique(labelled_data) # labels
+    boundingBoxes = spam.label.boundingBoxes(labelled_data)
+    centresOfMass = spam.label.centresOfMass(labelled_data, boundingBoxes=boundingBoxes)
+    volumes = spam.label.volumes(labelled_data, boundingBoxes=boundingBoxes)
+    radii = spam.label.equivalentRadii(labelled_data, boundingBoxes=boundingBoxes, volumes=volumes)
+    ellipse_axes = spam.label.ellipseAxes(labelled_data, volumes) # ellipse_axes
+    sphericity = spam.label.trueSphericity(labelled_data, boundingBoxes=boundingBoxes, centresOfMass=centresOfMass)
+    convex_volume = spam.label.convexVolume(labelled_data, boundingBoxes=boundingBoxes, centresOfMass=centresOfMass)
+    compactness = sand_atlas.particle.compactness(labelled_data, boundingBoxes=boundingBoxes, centresOfMass=centresOfMass, volumes=volumes) # compactness
+
+    output[:, 0] = (microns_per_voxel**3)*volumes[1:] # volume
+    output[:, 1] = 2*microns_per_voxel*radii[1:] # diameter
+    output[:, 2:5] = 2*microns_per_voxel*ellipse_axes[1:] # major, middle, minor axes
+    output[:, 5] = sphericity[1:] # true_sphericity
+    output[:, 6] = volumes[1:]/convex_volume[1:] # convexity
+    output[:, 7] = ellipse_axes[1:,2]/ellipse_axes[1:,1] # flatness
+    output[:, 8] = ellipse_axes[1:,1]/ellipse_axes[1:,0] # elongation
+    output[:, 9] = compactness[1:] # compactness
+
+    
+    # numpy.savetxt(filename, output, header=','.join(header), delimiter=',', comments='')
+    df = pd.DataFrame(output, columns=header)
     df.index = df.index + 1  # Start indexing at 1
-    df["Aspect Ratio"] = df["major_axis_length"] / df["minor_axis_length"]
+    return df
 
-    return df.rename(
-        columns={
-            "area": "Volume (µm³)",
-            "equivalent_diameter": "Equivalent Diameter (µm)",
-            "major_axis_length": "Major Axis Length (µm)",
-            "minor_axis_length": "Minor Axis Length (µm)",
-        }
-    )
+    # props = regionprops_table(
+    #     labelled_data,
+    #     intensity_image=raw_data,
+    #     spacing=(microns_per_voxel, microns_per_voxel, microns_per_voxel),
+    #     properties=("area", "equivalent_diameter", "major_axis_length", "minor_axis_length"),
+    # )
+
+    # df = pd.DataFrame(props)
+    # df.index = df.index + 1  # Start indexing at 1
+    # df["Aspect Ratio"] = df["major_axis_length"] / df["minor_axis_length"]
+
+    # return df.rename(
+    #     columns={
+    #         "area": "Volume (µm³)",
+    #         "equivalent_diameter": "Equivalent Diameter (µm)",
+    #         "major_axis_length": "Major Axis Length (µm)",
+    #         "minor_axis_length": "Minor Axis Length (µm)",
+    #     }
+    # )
 
 
 def full_analysis_script():
@@ -273,7 +338,7 @@ def properties_script():
     parser = argparse.ArgumentParser(description="Perform a full analysis of a sand sample.")
     parser.add_argument("json", type=str, help="The path to the json file containing the description of the data.")
     parser.add_argument("label", type=str, help="The path to the file containing the labelled data.", default=None)
-    parser.add_argument("--raw", type=str, help="The path to the file containing the raw data.", default=None)
+    #parser.add_argument("--raw", type=str, help="The path to the file containing the raw data.", default=None)
     parser.add_argument("--binning", type=int, help="The binning factor to use.", default=None)
 
     args = parser.parse_args()
@@ -289,16 +354,16 @@ def properties_script():
 
     label_data = sand_atlas.io.load_data(args.label)
     if args.binning is not None:
-        # TODO: This needs to be checked that it preserves the labels!!!
-        label_data = bin_data(label_data, args.binning).astype(int)
-    if args.raw is not None:
-        raw_data = sand_atlas.io.load_data(args.raw)
-        if args.binning is not None:
-            raw_data = bin_data(raw_data, args.binning)
-    else:
-        raw_data = None
+        label_data = bin_data(label_data, args.binning)
+    # if args.raw is not None:
+    #     raw_data = sand_atlas.io.load_data(args.raw)
+    #     if args.binning is not None:
+    #         raw_data = bin_data(raw_data, args.binning)
+    # else:
+    #     raw_data = None
 
-    df = get_particle_properties(label_data, raw_data, microns_per_voxel)
+    df = get_particle_properties(label_data, microns_per_voxel)
+    # df.to_csv(f"{json_data["URI"]}-summary.csv", index_label="Particle ID")
     df.to_csv("summary.csv", index_label="Particle ID")
 
 
@@ -324,10 +389,10 @@ def vdb_to_npy():
     parser.add_argument("vdb_filename", type=str, help="The path to the VDB file.")
 
     args = parser.parse_args()
-    current_file_path = os.path.abspath(__file__)
-    blender_script_path = os.path.join(os.path.dirname(current_file_path), "blender_scripts", "vdb_to_npy.py")
+    
+    blender_script_path = sand_atlas.video.resolve_path_for_blender("blender_scripts/vdb_to_npy.py")
 
-    subprocess.run(["blender", "--background", "--python", blender_script_path, "--", args.vdb_filename])
+    subprocess.run(["blender", "--background", "-noaudio", "--python", blender_script_path, "--", args.vdb_filename])
 
 
 def full_analysis(
@@ -381,6 +446,8 @@ def full_analysis(
         raw_data = sand_atlas.io.load_data(raw_data_filename)
         if binning is not None:
             raw_data = bin_data(raw_data, binning)
+    else:
+        raw_data = None
 
     if labelled_data_filename is None:
         labelled_data_filename = f"{output_dir}/upload/{sand_type}-labelled.tif"
@@ -392,6 +459,8 @@ def full_analysis(
         if binning is not None:
             labelled_data = bin_data(labelled_data, binning)
     else:
+        if raw_data is None:
+            raise ValueError("Raw data is required to generate labelled data.")
         binary_data = gray_to_bw(raw_data, threshold, blur)
         labelled_data = label_binary_data(binary_data)
         sand_atlas.io.save_data(labelled_data, labelled_data_filename)
@@ -401,19 +470,19 @@ def full_analysis(
     sand_atlas.io.make_zips(output_dir, output_dir + "/upload/")
 
     if not os.path.exists(properties_filename):
-        df = get_particle_properties(labelled_data, raw_data, microns_per_voxel)
+        df = get_particle_properties(labelled_data, microns_per_voxel)
         df.to_csv(properties_filename, index_label="Particle ID")
 
     stl_foldername = f"{output_dir}/stl_ORIGINAL"
     print("Making website videos")
     sand_atlas.video.make_website_video(stl_foldername, f"{output_dir}/upload/")
-    print("Making individual videos")
-    sand_atlas.video.make_individual_videos(stl_foldername, f"{output_dir}/media/")
+    # print("Making individual videos")
+    # sand_atlas.video.make_individual_videos(stl_foldername, f"{output_dir}/media/")
 
     if not os.path.exists(f"{output_dir}/upload/{sand_type}-raw.tif"):
-        os.system(f"cp {raw_data_filename} {output_dir}/upload/{sand_type}-raw.tif")
+        sand_atlas.io.save_data(raw_data, f"{output_dir}/upload/{sand_type}-raw.tif")
     if not os.path.exists(f"{output_dir}/upload/{sand_type}-labelled.tif"):
-        os.system(f"cp {labelled_data_filename} {output_dir}/upload/{sand_type}-labelled.tif")
+        sand_atlas.io.save_data(labelled_data, f"{output_dir}/upload/{sand_type}-labelled.tif")
 
 
 def bin_data(data, factor):
@@ -443,8 +512,10 @@ def bin_data(data, factor):
     new_shape = (trimmed_shape[0] // factor, trimmed_shape[1] // factor, trimmed_shape[2] // factor)
 
     # Reshape and compute the median for each block
+    original_dtype = data.dtype # Preserve the original data type
+
     downscaled_array = numpy.median(
         trimmed_array.reshape(new_shape[0], factor, new_shape[1], factor, new_shape[2], factor), axis=(1, 3, 5)
-    )
+    ).astype(original_dtype)
 
     return downscaled_array

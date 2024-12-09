@@ -65,7 +65,7 @@ def save_data(data, filename):
     extension = filename.split(".")[-1]
 
     if (extension.lower() == "tif") or (extension.lower() == "tiff"):
-        tifffile.imsave(filename, data)
+        tifffile.imwrite(filename, data)
     elif extension.lower() == "raw":
         data.tofile(filename)
     elif extension.lower() == "npz":

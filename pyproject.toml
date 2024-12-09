@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sand-atlas"
-version = "1.1.4"
+version = "1.2.0"
 authors = [
     {name = "Benjy Marks", email = "benjy.marks@sydney.edu.au"},
     {name = "Ilija Vego", email = "ilija.vego@sydney.edu.au"}
@@ -20,7 +20,8 @@ dependencies = [
     "nbsphinx",
     "tifffile",
     "pynrrd",
-    "h5py"
+    "h5py",
+    "spam",
 ]
 
 requires-python = ">=3.8"

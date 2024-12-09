@@ -1,4 +1,6 @@
 import os
+import platform
+import subprocess
 import glob
 import numpy
 from tqdm import tqdm
@@ -6,16 +8,47 @@ import matplotlib.image
 
 # font = os.path.expanduser("~/Library/Fonts/Montserrat-Medium.ttf")
 
-# debug = True
-debug = False
+debug = True
+# debug = False
 if debug:
     silence = ""
 else:
     silence = " > /dev/null 2>&1"
 
-current_file_path = os.path.abspath(__file__)
-blender_script_path = os.path.join(os.path.dirname(current_file_path), "blender_scripts", "render_mesh.py")
+def resolve_path_for_blender(script_relative_path):
+    """
+    Resolves the absolute path for a Blender script relative to the current script's directory.
+    
+    If the script is running in a Windows Subsystem for Linux (WSL) environment, the path is converted
+    to a Windows path using the `wslpath` command.
 
+    Args:
+        script_relative_path (str): The relative path to the Blender script from the current script's directory.
+
+    Returns:
+        str: The absolute path to the Blender script. If running in WSL, returns the Windows path.
+
+    Raises:
+        RuntimeError: If there is an error converting the path with `wslpath` in a WSL environment.
+    """
+    # Get the current script's directory
+    current_file_path = os.path.abspath(__file__)
+    blender_script_path = os.path.join(os.path.dirname(current_file_path), script_relative_path)
+
+    # If running in WSL, convert to Windows path
+    if 'microsoft' in platform.uname().release.lower():
+        try:
+            result = subprocess.run(
+                ['wslpath', '-w', blender_script_path],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=True,
+                text=True
+            )
+            return result.stdout.strip()
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(f"Error converting path with wslpath: {e.stderr}")
+    return blender_script_path
 
 def make_website_video(stl_foldername, output_foldername):
     """
@@ -39,6 +72,7 @@ def make_website_video(stl_foldername, output_foldername):
     - Uses a maximum of 72 STL files for the video.
     - Pads the grid with blank videos if the number of STL files is less than 72.
     """
+    blender_script_path = resolve_path_for_blender("blender_scripts/render_mesh.py")
 
     if not os.path.exists(f"{stl_foldername}/blank.webm"):
         matplotlib.image.imsave(f"{stl_foldername}/blank.png", numpy.zeros((1000, 1000, 4)))
@@ -55,7 +89,7 @@ def make_website_video(stl_foldername, output_foldername):
     for i, file in tqdm(enumerate(files[start_index : start_index + max_files]), total=max_files):
         if not os.path.exists(file[:-4] + ".webm"):
             # Use blender to render an animation of this grain rotating
-            os.system(f"blender --background -t 4 --python {blender_script_path} -- " + file + " > /dev/null 2>&1")
+            os.system(f"blender --background -t 4 -noaudio --python {blender_script_path} -- " + file + silence)
             # Use ffmpeg to convert the animation into a webm video
             os.system(
                 "ffmpeg -y -framerate 30 -pattern_type glob -i '"
@@ -68,8 +102,8 @@ def make_website_video(stl_foldername, output_foldername):
                 + silence
             )
             # Clean up the rendered images
-            os.system("rm -rf " + file[:-4] + "/*.png")
-            os.system("rmdir " + file[:-4])
+            os.system("rm -rf " + file[:-4] + "/*.png" + silence)
+            os.system("rmdir " + file[:-4] + silence)
 
     # Step 3: Stitch videos together into a grid
     print("Stitching videos together...")
@@ -129,7 +163,6 @@ def make_individual_videos(stl_foldername, output_foldername, bg_colour=None, fg
 
     Notes:
         - The function assumes Blender and ffmpeg are installed and available in the system's PATH.
-        - The Blender script path should be defined in the variable `blender_script_path`.
         - The function uses 120 frames to create a 4-second video at 30 frames per second.
         - If the `debug` variable is set to False, the rendered images are cleaned up after the video is created.
         - The videos are named sequentially as `particle_XXXXX.mp4` in the output folder.
@@ -138,8 +171,9 @@ def make_individual_videos(stl_foldername, output_foldername, bg_colour=None, fg
     print("Rendering videos for IG...")
     files = glob.glob(f"{stl_foldername}/*.stl")
     files.sort()
-    # print("FOUND", len(files), "FILES")
-    # print(files)
+    
+    blender_script_path = resolve_path_for_blender("blender_scripts/render_mesh.py")
+
 
     if not os.path.exists(output_foldername):
         os.makedirs(output_foldername)
@@ -148,11 +182,11 @@ def make_individual_videos(stl_foldername, output_foldername, bg_colour=None, fg
         if not os.path.exists(file[:-4] + ".mp4"):
             # Use blender to render an animation of this grain rotating
             os.system(
-                f"blender --background -t 4 --python {blender_script_path} -- "
+                f"blender --background -t 4 -noaudio --python {blender_script_path} -- "
                 + f" --filename {file} " 
                 + f"--frame_end 120 "  # 120 frames to make a 4 second video
                 + f"--bg_colour {bg_colour} --fg_colour {fg_colour}"
-                # + " > /dev/null 2>&1"
+                + silence
             )
             # Use ffmpeg to convert the animation into a webm video
             os.system(
@@ -167,6 +201,6 @@ def make_individual_videos(stl_foldername, output_foldername, bg_colour=None, fg
             )
             if not debug:
                 # Clean up the rendered images
-                os.system("rm -rf " + file[:-4] + "/*.png")
-                os.system("mv " + file[:-4] + ".mp4 " + output_foldername + "/particle_" + str(i).zfill(5) + ".mp4")
-                os.system("rmdir " + file[:-4])
+                os.system("rm -rf " + file[:-4] + "/*.png" + silence)
+                os.system("mv " + file[:-4] + ".mp4 " + output_foldername + "/particle_" + str(i).zfill(5) + ".mp4" + silence)
+                os.system("rmdir " + file[:-4] + silence)

@@ -166,5 +166,11 @@ with bpy.context.temp_override(selected_objects=mesh_obs):
     bpy.ops.object.origin_set(type="ORIGIN_GEOMETRY", center="MEDIAN")
 ob.matrix_world.translation -= ob.location
 
-scene.render.filepath = filename[:-4] + "/frame_"  # save here
+scene.render.filepath = filename[:-4] + "/frame_####"  # save here
 bpy.ops.render.render(animation=True)
+
+print('Finished rendering, now time to quit')
+# Quit Blender after rendering
+bpy.ops.wm.quit_blender()
+
+print('Attempted to quit Blender. You should not see this message if Blender has quit.')
