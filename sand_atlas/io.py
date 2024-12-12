@@ -44,7 +44,7 @@ def load_data(filename):
     return data
 
 
-def save_data(data, filename):
+def save_data(data, filename, microns_per_voxel=None):
     """
     Save data to a file with the specified filename and extension.
 
@@ -65,7 +65,18 @@ def save_data(data, filename):
     extension = filename.split(".")[-1]
 
     if (extension.lower() == "tif") or (extension.lower() == "tiff"):
-        tifffile.imwrite(filename, data)
+        if microns_per_voxel is None:
+            tifffile.imwrite(filename, data)
+        else:
+            tifffile.imwrite(filename,
+                             resolution=(microns_per_voxel, microns_per_voxel),
+                             resolutionunit='none',
+                             metadata={
+                                "unit": "µm",
+                                "spacing": 1./microns_per_voxel,  # For ImageJ, this sets the z-spacing if a stack
+                                "axes": "ZYX"
+                             }
+                            )
     elif extension.lower() == "raw":
         data.tofile(filename)
     elif extension.lower() == "npz":

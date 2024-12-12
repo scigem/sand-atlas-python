@@ -3,7 +3,7 @@ import bpy
 import pyopenvdb
 import numpy
 import bmesh
-
+import tifffile
 
 def moment_of_inertia_tensor(voxel_grid):
   """
@@ -66,6 +66,8 @@ else:
     print("Voxel size [m]=", voxel_size_m)
 
 data = numpy.load(input_file)
+
+data = data[::8, ::8, ::8]  # Downsample the data by a factor of 8 in each dimension
 
 # outname = ".".join(input_file.split(".")[:-1])
 input_folder = "/".join(input_file.split("/")[:-2])  # Get the folder name stripping the "npy" part too
@@ -182,12 +184,22 @@ pyopenvdb.write(output_path, grids=[grid])
 
 
 # Write the grid to a NPY file
-bbox = grid.evalActiveVoxelBoundingBox()
-output_path = f"{input_folder}/yade/{particle_name}.npy"
-array = numpy.zeros([bbox[1][0] - bbox[0][0], bbox[1][1] - bbox[0][1], bbox[1][2] - bbox[0][2]])
-grid.copyToArray(array)
+# bbox = grid.evalActiveVoxelBoundingBox()
+# output_path = f"{input_folder}/yade/{particle_name}.npy"
+# array = numpy.zeros([bbox[1][0] - bbox[0][0], bbox[1][1] - bbox[0][1], bbox[1][2] - bbox[0][2]])
+# grid.copyToArray(array)
 
-numpy.save(output_path, array)
+# numpy.save(output_path, array)
+# tifffile.imwrite(output_path[:-4] + ".tiff",
+#                  array.astype(numpy.uint16),
+#                  resolution=(1/voxel_size_m, 1/voxel_size_m),
+#                  resolutionunit='none',
+#                  metadata={
+#                     "unit": "m",
+#                     "spacing": voxel_size_m,  # For ImageJ, this sets the z-spacing if a stack
+#                     "axes": "ZYX"
+#                  }
+#                 )
 
-output_path = f"{input_folder}/yade/voxel_size_m.txt"
-numpy.savetxt(output_path, [voxel_size_m], fmt="%f")
+# output_path = f"{input_folder}/yade/voxel_size_m.txt"
+# numpy.savetxt(output_path, [voxel_size_m], fmt="%f")

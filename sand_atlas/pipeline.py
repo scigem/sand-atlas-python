@@ -492,7 +492,7 @@ def full_analysis(
             raise ValueError("Raw data is required to generate labelled data.")
         binary_data = gray_to_bw(raw_data, threshold, blur)
         labelled_data = label_binary_data(binary_data)
-        sand_atlas.io.save_data(labelled_data, labelled_data_filename)
+        sand_atlas.io.save_data(labelled_data, labelled_data_filename, microns_per_voxel=microns_per_voxel)
 
     labelled_image_to_mesh(labelled_data, sand_type, microns_per_voxel, output_dir, debug=False)
 
@@ -509,9 +509,9 @@ def full_analysis(
     # sand_atlas.video.make_individual_videos(stl_foldername, f"{output_dir}/media/")
 
     if not os.path.exists(f"{output_dir}/upload/{sand_type}-raw.tif"):
-        sand_atlas.io.save_data(raw_data, f"{output_dir}/upload/{sand_type}-raw.tif")
+        sand_atlas.io.save_data(raw_data, f"{output_dir}/upload/{sand_type}-raw.tif", microns_per_voxel=microns_per_voxel)
     if not os.path.exists(f"{output_dir}/upload/{sand_type}-labelled.tif"):
-        sand_atlas.io.save_data(labelled_data, f"{output_dir}/upload/{sand_type}-labelled.tif")
+        sand_atlas.io.save_data(labelled_data, f"{output_dir}/upload/{sand_type}-labelled.tif", microns_per_voxel=microns_per_voxel)
 
 
 def bin_data(data, factor):
