@@ -268,10 +268,12 @@ def clean_labels_script():
     Parses command-line arguments and performs label cleaning on a sand sample.
     This script takes a file containing labelled data and processes it using the specified
     number of processors and verbosity level.
+    
     Command-line arguments:
     - label (str): The path to the file containing the labelled data.
     - --num_processors (int, optional): The number of processors to use (default is 4).
     - --verbosity (int, optional): The verbosity level of the output (default is 0).
+    
     Returns:
     None
     """

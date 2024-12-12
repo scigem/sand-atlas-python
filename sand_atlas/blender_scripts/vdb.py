@@ -2,6 +2,7 @@ import sys
 import bpy
 import pyopenvdb
 import numpy
+import bmesh
 
 
 def moment_of_inertia_tensor(voxel_grid):
@@ -39,6 +40,17 @@ def moment_of_inertia_tensor(voxel_grid):
   I[2, 1] = I[1, 2]
 
   return I
+
+def ellipse_axes(voxel_grid):
+    M = numpy.sum(voxel_grid)
+    I = moment_of_inertia_tensor(voxel_grid)
+    eig_values, eig_vectors = numpy.linalg.eig(I)
+
+    a = numpy.sqrt(5 * (eig_values[0] + eig_values[1] - eig_values[2]) / (2*M))
+    b = numpy.sqrt(5 * (eig_values[1] + eig_values[2] - eig_values[0]) / (2*M))
+    c = numpy.sqrt(5 * (eig_values[2] + eig_values[0] - eig_values[1]) / (2*M))
+    
+    return a, b, c
 
 # import tifffile
 
@@ -100,17 +112,22 @@ volume_to_mesh_modifier.adaptivity = 0.0
 # Apply the "Volume to Mesh" modifier
 bpy.ops.object.modifier_apply(modifier="VolumeToMesh")
 
-inertia_tensor = moment_of_inertia_tensor(data)
-eig_values, eig_vectors = numpy.linalg.eig(inertia_tensor)
-min_eig_value_index = numpy.argmin(eig_values)
-min_eig_vector = eig_vectors[:, min_eig_value_index]
-theta = numpy.arccos(min_eig_vector[2])  # Angle between the z-axis and the smallest eigenvector
+axes = ellipse_axes(data)
+dim_min = 2*min(axes)
+
+# print('min_eig_value:', dim_min)
+# min_eig_vector = eig_vectors[:, min_eig_value_index]
+# theta = numpy.arccos(min_eig_vector[2])  # Angle between the z-axis and the smallest eigenvector
 
 # Get the dimensions of the cube
 dim = cube.dimensions
 dim_min_ortho = numpy.amin([dim.x, dim.y, dim.z])
+# print('COMPARE WITH PREVIOUS RESULT:', dim_min_ortho)
 
-dim_min = dim_min_ortho / numpy.cos(theta)
+original_volume = numpy.sum(data)*voxel_size_m**3
+
+# Define voxel sizes for different qualities
+voxel_sizes = [1, dim_min / 100, dim_min / 30, dim_min / 10, dim_min / 3]
 
 for quality in ["ORIGINAL", "100", "30", "10", "3"]:
     if quality == "ORIGINAL":
@@ -126,20 +143,31 @@ for quality in ["ORIGINAL", "100", "30", "10", "3"]:
     elif quality == "3":
         remesh_modifier.voxel_size = voxel_sizes[4]
 
-    # The volume is now a mesh object
-    mesh_obj = bpy.context.active_object
-
-    # Scale the mesh based on the voxel size
-    mesh_obj.scale = (voxel_size_m, voxel_size_m, voxel_size_m)
+    obj = bpy.context.active_object
 
     # Set the origin of the mesh to the center of the volume
     bpy.ops.object.origin_set(type="ORIGIN_CENTER_OF_VOLUME", center="MEDIAN")
 
-    if quality == "ORIGINAL":
+    depsgraph = bpy.context.evaluated_depsgraph_get()
 
-        # Define voxel sizes for different qualities
-        voxel_sizes = [1, dim_min / 100, dim_min / 30, dim_min / 10, dim_min / 3]
+    # Get the evaluated object with all modifiers applied
+    eval_obj = obj.evaluated_get(depsgraph)
+    eval_mesh = eval_obj.to_mesh()
 
+    # Calculate volume using the evaluated mesh
+    bm = bmesh.new()
+    bm.from_mesh(eval_mesh)
+    volume = bm.calc_volume()
+
+    bm.free()
+
+    # Free the temporary mesh
+    eval_obj.to_mesh_clear()
+    
+    radius_offset = (original_volume / volume)**(1/3)
+
+    # Scale the mesh based on the voxel size and preserving the volume
+    obj.scale = (voxel_size_m*radius_offset, voxel_size_m*radius_offset, voxel_size_m*radius_offset)
 
     # Export the mesh as an STL file
     output_path = f"{input_folder}/stl_{quality}/{particle_name}.stl"  # Set the output file path
