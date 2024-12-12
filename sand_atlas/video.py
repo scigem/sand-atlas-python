@@ -146,7 +146,7 @@ def make_website_video(stl_foldername, output_foldername):
         os.system("rm grid_*.webm")
 
 
-def make_individual_videos(stl_foldername, output_foldername, bg_colour=None, fg_colour=None):
+def make_individual_videos(stl_foldername, output_foldername, max_videos=9, bg_colour=None, fg_colour=None):
     """
     Renders individual videos for each STL file in the specified folder.
 
@@ -157,6 +157,9 @@ def make_individual_videos(stl_foldername, output_foldername, bg_colour=None, fg
     Args:
         stl_foldername (str): The path to the folder containing STL files.
         output_foldername (str): The path to the folder where the output videos will be saved.
+        max_videos (int, optional): The maximum number of videos to process. Defaults to 9.
+        bg_colour (str, optional): The background colour for the rendered images. Defaults to None.
+        fg_colour (str, optional): The foreground colour for the rendered images. Defaults to None.
 
     Returns:
         None
@@ -174,11 +177,13 @@ def make_individual_videos(stl_foldername, output_foldername, bg_colour=None, fg
     
     blender_script_path = resolve_path_for_blender("blender_scripts/render_mesh.py")
 
+    if max_videos is None:
+        max_videos = len(files)
 
     if not os.path.exists(output_foldername):
         os.makedirs(output_foldername)
 
-    for i, file in tqdm(enumerate(files), total=len(files)):
+    for i, file in tqdm(enumerate(files[:max_videos]), total=max_videos):
         if not os.path.exists(file[:-4] + ".mp4"):
             # Use blender to render an animation of this grain rotating
             os.system(
