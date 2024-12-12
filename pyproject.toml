@@ -38,6 +38,7 @@ neuroglancer  = [ "cloud-volume" ]
 sand_atlas_process = "sand_atlas.pipeline:full_analysis_script"
 sand_atlas_properties = "sand_atlas.pipeline:properties_script"
 vdb_to_npy = "sand_atlas.pipeline:vdb_to_npy"
+sand_atlas_clean_labels = "sand_atlas.pipeline:clean_labels_script"
 
 [project.urls]
 Homepage = "https://sand-atlas.scigem.com"

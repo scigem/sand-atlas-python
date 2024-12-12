@@ -10,6 +10,7 @@ from skimage.filters import threshold_otsu, gaussian
 import sand_atlas.io
 import sand_atlas.video
 import sand_atlas.particle
+import sand_atlas.clean
 
 def gray_to_bw(data, threshold=None, blur=None):
     """
@@ -261,6 +262,32 @@ def get_particle_properties(labelled_data, microns_per_voxel):
     #         "minor_axis_length": "Minor Axis Length (µm)",
     #     }
     # )
+
+def clean_labels_script():
+    """
+    Parses command-line arguments and performs label cleaning on a sand sample.
+    This script takes a file containing labelled data and processes it using the specified
+    number of processors and verbosity level.
+    Command-line arguments:
+    - label (str): The path to the file containing the labelled data.
+    - --num_processors (int, optional): The number of processors to use (default is 4).
+    - --verbosity (int, optional): The verbosity level of the output (default is 0).
+    Returns:
+    None
+    """
+    
+    parser = argparse.ArgumentParser(description="Perform a full analysis of a sand sample.")
+    parser.add_argument("label", type=str, help="The path to the file containing the labelled data.")
+    parser.add_argument("--num_processors", type=int, help="The number of processors to use", default=4)
+    parser.add_argument("--verbosity", type=int, help="How noisy", default=0)
+
+    args = parser.parse_args()
+
+    sand_atlas.clean.clean_labels(
+        args.label,
+        num_processors=args.num_processors,
+        verbosity=args.verbosity
+    )
 
 
 def full_analysis_script():

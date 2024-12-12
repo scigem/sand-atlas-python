@@ -3,6 +3,43 @@ import bpy
 import pyopenvdb
 import numpy
 
+
+def moment_of_inertia_tensor(voxel_grid):
+  """
+  Calculates the moment of inertia tensor for a 3D voxellated binary particle.
+
+  Args:
+    voxel_grid: A 3D numpy array representing the particle. 
+                 1 represents the particle, 0 represents empty space.
+
+  Returns:
+    A 3x3 numpy array representing the moment of inertia tensor.
+  """
+
+  # Calculate the center of mass
+  indices = numpy.argwhere(voxel_grid == 1)
+  center_of_mass = numpy.mean(indices, axis=0)
+
+  # Initialize the inertia tensor
+  I = numpy.zeros((3, 3))
+
+  # Calculate the inertia tensor elements
+  for index in indices:
+    x, y, z = index - center_of_mass
+    I[0, 0] += y**2 + z**2
+    I[1, 1] += x**2 + z**2
+    I[2, 2] += x**2 + y**2
+    I[0, 1] -= x * y
+    I[0, 2] -= x * z
+    I[1, 2] -= y * z
+
+  # Make the tensor symmetric
+  I[1, 0] = I[0, 1]
+  I[2, 0] = I[0, 2]
+  I[2, 1] = I[1, 2]
+
+  return I
+
 # import tifffile
 
 # data = numpy.random.rand(50, 50, 50)
@@ -63,13 +100,17 @@ volume_to_mesh_modifier.adaptivity = 0.0
 # Apply the "Volume to Mesh" modifier
 bpy.ops.object.modifier_apply(modifier="VolumeToMesh")
 
+inertia_tensor = moment_of_inertia_tensor(data)
+eig_values, eig_vectors = numpy.linalg.eig(inertia_tensor)
+min_eig_value_index = numpy.argmin(eig_values)
+min_eig_vector = eig_vectors[:, min_eig_value_index]
+theta = numpy.arccos(min_eig_vector[2])  # Angle between the z-axis and the smallest eigenvector
+
 # Get the dimensions of the cube
 dim = cube.dimensions
-dim_min = numpy.amin([dim.x, dim.y, dim.z])
+dim_min_ortho = numpy.amin([dim.x, dim.y, dim.z])
 
-# Define voxel sizes for different qualities
-voxel_sizes = [1, dim_min / 100, dim_min / 30, dim_min / 10, dim_min / 3]
-print(voxel_sizes)
+dim_min = dim_min_ortho / numpy.cos(theta)
 
 for quality in ["ORIGINAL", "100", "30", "10", "3"]:
     if quality == "ORIGINAL":
@@ -93,6 +134,12 @@ for quality in ["ORIGINAL", "100", "30", "10", "3"]:
 
     # Set the origin of the mesh to the center of the volume
     bpy.ops.object.origin_set(type="ORIGIN_CENTER_OF_VOLUME", center="MEDIAN")
+
+    if quality == "ORIGINAL":
+
+        # Define voxel sizes for different qualities
+        voxel_sizes = [1, dim_min / 100, dim_min / 30, dim_min / 10, dim_min / 3]
+
 
     # Export the mesh as an STL file
     output_path = f"{input_folder}/stl_{quality}/{particle_name}.stl"  # Set the output file path
