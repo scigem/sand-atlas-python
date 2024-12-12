@@ -3,7 +3,7 @@ import bpy
 import pyopenvdb
 import numpy
 import bmesh
-import tifffile
+# import tifffile
 
 def moment_of_inertia_tensor(voxel_grid):
   """
