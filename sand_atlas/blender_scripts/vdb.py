@@ -66,8 +66,8 @@ voxel_size_m = float(sys.argv[-1])  # Voxel size is the last argument
 # Ensure voxel_size_m is positive and non-zero
 if voxel_size_m <= 0:
     raise ValueError("Voxel size must be a positive, non-zero value.")
-else:
-    print("Voxel size [m]=", voxel_size_m)
+# else:
+#     print("Voxel size [m]=", voxel_size_m)
 
 data = numpy.load(input_file)
 
@@ -164,8 +164,6 @@ for quality in ["ORIGINAL", "100", "30", "10", "3"]:
     bm = bmesh.new()
     bm.from_mesh(eval_mesh)
     volume = bm.calc_volume()
-    print(original_volume)
-    print(volume)
 
     bm.free()
 
@@ -174,12 +172,8 @@ for quality in ["ORIGINAL", "100", "30", "10", "3"]:
 
     radius_offset = (original_volume / volume) ** (1 / 3)
 
-    print(radius_offset)
-
     # Scale the mesh based on the voxel size and preserving the volume
     obj.scale = (voxel_size_m * radius_offset, voxel_size_m * radius_offset, voxel_size_m * radius_offset)
-
-    print(obj.scale)
 
     # Export the mesh as an STL file
     output_path = f"{input_folder}/stl_{quality}/{particle_name}.stl"  # Set the output file path
