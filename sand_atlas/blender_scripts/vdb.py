@@ -3,54 +3,58 @@ import bpy
 import pyopenvdb
 import numpy
 import bmesh
+
 # import tifffile
 
+
 def moment_of_inertia_tensor(voxel_grid):
-  """
-  Calculates the moment of inertia tensor for a 3D voxellated binary particle.
+    """
+    Calculates the moment of inertia tensor for a 3D voxellated binary particle.
 
-  Args:
-    voxel_grid: A 3D numpy array representing the particle. 
-                 1 represents the particle, 0 represents empty space.
+    Args:
+      voxel_grid: A 3D numpy array representing the particle.
+                   1 represents the particle, 0 represents empty space.
 
-  Returns:
-    A 3x3 numpy array representing the moment of inertia tensor.
-  """
+    Returns:
+      A 3x3 numpy array representing the moment of inertia tensor.
+    """
 
-  # Calculate the center of mass
-  indices = numpy.argwhere(voxel_grid == 1)
-  center_of_mass = numpy.mean(indices, axis=0)
+    # Calculate the center of mass
+    indices = numpy.argwhere(voxel_grid == 1)
+    center_of_mass = numpy.mean(indices, axis=0)
 
-  # Initialize the inertia tensor
-  I = numpy.zeros((3, 3))
+    # Initialize the inertia tensor
+    I = numpy.zeros((3, 3))
 
-  # Calculate the inertia tensor elements
-  for index in indices:
-    x, y, z = index - center_of_mass
-    I[0, 0] += y**2 + z**2
-    I[1, 1] += x**2 + z**2
-    I[2, 2] += x**2 + y**2
-    I[0, 1] -= x * y
-    I[0, 2] -= x * z
-    I[1, 2] -= y * z
+    # Calculate the inertia tensor elements
+    for index in indices:
+        x, y, z = index - center_of_mass
+        I[0, 0] += y**2 + z**2
+        I[1, 1] += x**2 + z**2
+        I[2, 2] += x**2 + y**2
+        I[0, 1] -= x * y
+        I[0, 2] -= x * z
+        I[1, 2] -= y * z
 
-  # Make the tensor symmetric
-  I[1, 0] = I[0, 1]
-  I[2, 0] = I[0, 2]
-  I[2, 1] = I[1, 2]
+    # Make the tensor symmetric
+    I[1, 0] = I[0, 1]
+    I[2, 0] = I[0, 2]
+    I[2, 1] = I[1, 2]
 
-  return I
+    return I
+
 
 def ellipse_axes(voxel_grid):
     M = numpy.sum(voxel_grid)
     I = moment_of_inertia_tensor(voxel_grid)
     eig_values, eig_vectors = numpy.linalg.eig(I)
 
-    a = numpy.sqrt(5 * (eig_values[0] + eig_values[1] - eig_values[2]) / (2*M))
-    b = numpy.sqrt(5 * (eig_values[1] + eig_values[2] - eig_values[0]) / (2*M))
-    c = numpy.sqrt(5 * (eig_values[2] + eig_values[0] - eig_values[1]) / (2*M))
-    
+    a = numpy.sqrt(5 * (eig_values[0] + eig_values[1] - eig_values[2]) / (2 * M))
+    b = numpy.sqrt(5 * (eig_values[1] + eig_values[2] - eig_values[0]) / (2 * M))
+    c = numpy.sqrt(5 * (eig_values[2] + eig_values[0] - eig_values[1]) / (2 * M))
+
     return a, b, c
+
 
 # import tifffile
 
@@ -67,7 +71,7 @@ else:
 
 data = numpy.load(input_file)
 
-data = data[::8, ::8, ::8]  # Downsample the data by a factor of 8 in each dimension
+# data = data[::8, ::8, ::8]  # Downsample the data by a factor of 8 in each dimension
 
 # outname = ".".join(input_file.split(".")[:-1])
 input_folder = "/".join(input_file.split("/")[:-2])  # Get the folder name stripping the "npy" part too
@@ -115,7 +119,7 @@ volume_to_mesh_modifier.adaptivity = 0.0
 bpy.ops.object.modifier_apply(modifier="VolumeToMesh")
 
 axes = ellipse_axes(data)
-dim_min = 2*min(axes)
+dim_min = 2 * min(axes)
 
 # print('min_eig_value:', dim_min)
 # min_eig_vector = eig_vectors[:, min_eig_value_index]
@@ -126,7 +130,7 @@ dim = cube.dimensions
 dim_min_ortho = numpy.amin([dim.x, dim.y, dim.z])
 # print('COMPARE WITH PREVIOUS RESULT:', dim_min_ortho)
 
-original_volume = numpy.sum(data)*voxel_size_m**3
+original_volume = numpy.sum(data) #* voxel_size_m**3
 
 # Define voxel sizes for different qualities
 voxel_sizes = [1, dim_min / 100, dim_min / 30, dim_min / 10, dim_min / 3]
@@ -160,16 +164,22 @@ for quality in ["ORIGINAL", "100", "30", "10", "3"]:
     bm = bmesh.new()
     bm.from_mesh(eval_mesh)
     volume = bm.calc_volume()
+    print(original_volume)
+    print(volume)
 
     bm.free()
 
     # Free the temporary mesh
     eval_obj.to_mesh_clear()
-    
-    radius_offset = (original_volume / volume)**(1/3)
+
+    radius_offset = (original_volume / volume) ** (1 / 3)
+
+    print(radius_offset)
 
     # Scale the mesh based on the voxel size and preserving the volume
-    obj.scale = (voxel_size_m*radius_offset, voxel_size_m*radius_offset, voxel_size_m*radius_offset)
+    obj.scale = (voxel_size_m * radius_offset, voxel_size_m * radius_offset, voxel_size_m * radius_offset)
+
+    print(obj.scale)
 
     # Export the mesh as an STL file
     output_path = f"{input_folder}/stl_{quality}/{particle_name}.stl"  # Set the output file path
