@@ -4,17 +4,19 @@ import sys
 import numpy
 from math import radians
 
+
 # Function to convert hex color to Blender color
 def hex_to_blender_color(hex_code, alpha=1.0):
     # Remove the '#' if present
-    hex_code = hex_code.lstrip('#')
-    
+    hex_code = hex_code.lstrip("#")
+
     # Convert hex to RGB, and then to Blender's 0-1 scale
     r = int(hex_code[0:2], 16) / 255.0
     g = int(hex_code[2:4], 16) / 255.0
     b = int(hex_code[4:6], 16) / 255.0
-    
+
     return (r, g, b, alpha)
+
 
 # run with:
 # blender --background --python mesh_to_blender.py -- /path/to/file.stl
@@ -29,7 +31,7 @@ def hex_to_blender_color(hex_code, alpha=1.0):
 
 # Find the index of '--' to isolate your script's arguments
 try:
-    idx = sys.argv.index('--') + 1
+    idx = sys.argv.index("--") + 1
     # Pass only the arguments after '--' to argparse
     script_args = sys.argv[idx:]
 except ValueError:
@@ -49,6 +51,10 @@ parser.add_argument("--bg_colour", type=str, help="Background colour as a hex st
 
 parser.add_argument("--fg_colour", type=str, help="Foreground colour as a hex string e.g. ff0000 (optional)")
 
+parser.add_argument(
+    "--resolution", type=str, default="1000x1000", help="Resolution as a string e.g. 1080x1350 (optional)"
+)
+
 # Parse arguments, ignoring Blender's own arguments
 args = parser.parse_args(script_args)
 
@@ -57,6 +63,7 @@ filename = args.filename
 frame_end = args.frame_end
 bg_colour = args.bg_colour
 fg_colour = args.fg_colour
+resolution = args.resolution.split("x")
 
 # Deselect all objects
 bpy.ops.object.select_all(action="DESELECT")
@@ -77,11 +84,12 @@ scene.transform_orientation_slots[0].type = "LOCAL"
 scene.frame_start = 1
 scene.frame_end = frame_end
 
-scene.render.resolution_x = 1000
-scene.render.resolution_y = 1000
+
+scene.render.resolution_x = int(resolution[0])
+scene.render.resolution_y = int(resolution[1])
 scene.render.resolution_percentage = 100
 
-if bg_colour == 'None':
+if bg_colour == "None":
     bpy.context.scene.render.film_transparent = True
 else:
     bpy.data.worlds["World"].node_tree.nodes["Background"].inputs[0].default_value = hex_to_blender_color(bg_colour)
@@ -97,7 +105,10 @@ scene.camera = cam_ob  # set the active camera
 cam_data.type = "ORTHO"
 # cam_data.clip_end = numpy.amax(dimensions*2)
 # cam_data.lens = 18  # zoom
-cam_data.ortho_scale = 1.15
+if scene.render.resolution_x >= scene.render.resolution_y:
+    cam_data.ortho_scale = 1.15
+else:
+    cam_data.ortho_scale = 1.15 * (scene.render.resolution_y / scene.render.resolution_x)
 
 
 cam_ob.rotation_euler = (1.570797, 0, 1.570797)
@@ -117,7 +128,7 @@ bpy.data.objects["Area"].data.energy = 10
 
 bpy.ops.wm.stl_import(filepath=filename)
 ob = bpy.context.selected_objects[-1]
-if fg_colour != 'None':
+if fg_colour != "None":
     # Create a new material
     material = bpy.data.materials.new(name="ImportedObjectMaterial")
     material.use_nodes = True  # Enable nodes to access Principled BSDF
@@ -169,8 +180,8 @@ ob.matrix_world.translation -= ob.location
 scene.render.filepath = filename[:-4] + "/frame_####"  # save here
 bpy.ops.render.render(animation=True)
 
-print('Finished rendering, now time to quit')
+print("Finished rendering, now time to quit")
 # Quit Blender after rendering
 bpy.ops.wm.quit_blender()
 
-print('Attempted to quit Blender. You should not see this message if Blender has quit.')
+print("Attempted to quit Blender. You should not see this message if Blender has quit.")

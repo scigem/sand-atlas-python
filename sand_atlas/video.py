@@ -8,17 +8,11 @@ import matplotlib.image
 
 # font = os.path.expanduser("~/Library/Fonts/Montserrat-Medium.ttf")
 
-debug = True
-# debug = False
-if debug:
-    silence = ""
-else:
-    silence = " > /dev/null 2>&1"
 
 def resolve_path_for_blender(script_relative_path):
     """
     Resolves the absolute path for a Blender script relative to the current script's directory.
-    
+
     If the script is running in a Windows Subsystem for Linux (WSL) environment, the path is converted
     to a Windows path using the `wslpath` command.
 
@@ -36,23 +30,24 @@ def resolve_path_for_blender(script_relative_path):
     blender_script_path = os.path.join(os.path.dirname(current_file_path), script_relative_path)
 
     # If running in WSL, convert to Windows path
-    if 'microsoft' in platform.uname().release.lower():
+    if "microsoft" in platform.uname().release.lower():
         try:
             result = subprocess.run(
-                ['wslpath', '-w', blender_script_path],
+                ["wslpath", "-w", blender_script_path],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 check=True,
-                text=True
+                text=True,
             )
             return result.stdout.strip()
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"Error converting path with wslpath: {e.stderr}")
     return blender_script_path
 
-def make_website_video(stl_foldername, output_foldername):
+
+def make_website_video(stl_foldername, output_foldername, debug=False):
     """
-    Generates a video from STL files by rendering them, converting to webm format, 
+    Generates a video from STL files by rendering them, converting to webm format,
     and stitching them together into a grid.
 
     Parameters:
@@ -73,6 +68,11 @@ def make_website_video(stl_foldername, output_foldername):
     - Pads the grid with blank videos if the number of STL files is less than 72.
     """
     blender_script_path = resolve_path_for_blender("blender_scripts/render_mesh.py")
+
+    if debug:
+        silence = ""
+    else:
+        silence = " > /dev/null 2>&1"
 
     if not os.path.exists(f"{stl_foldername}/blank.webm"):
         matplotlib.image.imsave(f"{stl_foldername}/blank.png", numpy.zeros((1000, 1000, 4)))
@@ -146,7 +146,9 @@ def make_website_video(stl_foldername, output_foldername):
         os.system("rm grid_*.webm")
 
 
-def make_individual_videos(stl_foldername, output_foldername, max_videos=9, bg_colour=None, fg_colour=None):
+def make_individual_videos(
+    stl_foldername, output_foldername, max_videos=9, bg_colour=None, fg_colour=None, debug=False
+):
     """
     Renders individual videos for each STL file in the specified folder.
 
@@ -170,11 +172,17 @@ def make_individual_videos(stl_foldername, output_foldername, max_videos=9, bg_c
         - If the `debug` variable is set to False, the rendered images are cleaned up after the video is created.
         - The videos are named sequentially as `particle_XXXXX.mp4` in the output folder.
     """
+    if debug:
+        silence = ""
+    else:
+        silence = " > /dev/null 2>&1"
 
     print("Rendering videos for IG...")
     files = glob.glob(f"{stl_foldername}/*.stl")
     files.sort()
-    
+    if debug:
+        print("Files:", files)
+
     blender_script_path = resolve_path_for_blender("blender_scripts/render_mesh.py")
 
     if max_videos is None:
@@ -188,9 +196,10 @@ def make_individual_videos(stl_foldername, output_foldername, max_videos=9, bg_c
             # Use blender to render an animation of this grain rotating
             os.system(
                 f"blender --background -t 4 -noaudio --python {blender_script_path} -- "
-                + f" --filename {file} " 
+                + f" --filename {file} "
                 + f"--frame_end 120 "  # 120 frames to make a 4 second video
-                + f"--bg_colour {bg_colour} --fg_colour {fg_colour}"
+                + f"--bg_colour {bg_colour} --fg_colour {fg_colour} "
+                + f"--resolution 1080x1350"
                 + silence
             )
             # Use ffmpeg to convert the animation into a webm video
@@ -198,7 +207,9 @@ def make_individual_videos(stl_foldername, output_foldername, max_videos=9, bg_c
                 "ffmpeg -y -framerate 30 -pattern_type glob -i '"
                 + file[:-4]
                 + "/*.png' "
-                + "-c:v libvpx-vp9 "
+                # + "-c:v libvpx-vp9 "
+                + "-c:v libx264 "
+                + "-crf 10 "
                 # + '-vf "drawtext=text='+ids[i]+f':x=(w-tw)/2:y=h-th-10:fontcolor=white:fontsize=72:fontfile={font}" '
                 + file[:-4]
                 + ".mp4"
@@ -207,5 +218,7 @@ def make_individual_videos(stl_foldername, output_foldername, max_videos=9, bg_c
             if not debug:
                 # Clean up the rendered images
                 os.system("rm -rf " + file[:-4] + "/*.png" + silence)
-                os.system("mv " + file[:-4] + ".mp4 " + output_foldername + "/particle_" + str(i).zfill(5) + ".mp4" + silence)
+                os.system(
+                    "mv " + file[:-4] + ".mp4 " + output_foldername + "/particle_" + str(i).zfill(5) + ".mp4" + silence
+                )
                 os.system("rmdir " + file[:-4] + silence)
