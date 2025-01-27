@@ -217,16 +217,33 @@ def get_particle_properties(labelled_data, microns_per_voxel):
         ]
     
     output = numpy.zeros((numpy.amax(labelled_data), len(header)))
-    
+    print('\nCalculating particle properties...')
     # output[:, 0] = numpy.unique(labelled_data) # labels
+    print('\tboundingBoxes...', end='')
     boundingBoxes = spam.label.boundingBoxes(labelled_data)
+    print(' Done.')
+    print('\tcentresOfMass...', end='')
     centresOfMass = spam.label.centresOfMass(labelled_data, boundingBoxes=boundingBoxes)
+    print(' Done.')
+    print('\tvolumes...', end='')
     volumes = spam.label.volumes(labelled_data, boundingBoxes=boundingBoxes)
+    print(' Done.')
+    print('\tradii...', end='')
     radii = spam.label.equivalentRadii(labelled_data, boundingBoxes=boundingBoxes, volumes=volumes)
+    print(' Done.')
+    print('\tellipse_axes...', end='')
     ellipse_axes = spam.label.ellipseAxes(labelled_data, volumes) # ellipse_axes
+    print(' Done.')
+    print('\tsphericity...', end='')
     sphericity = spam.label.trueSphericity(labelled_data, boundingBoxes=boundingBoxes, centresOfMass=centresOfMass)
-    convex_volume = spam.label.convexVolume(labelled_data, boundingBoxes=boundingBoxes, centresOfMass=centresOfMass)
+    print(' Done.')
+    nProcesses_convex_volume = 4
+    print(f'\tconvex_volume (using {nProcesses_convex_volume} processes)...', end='')
+    convex_volume = spam.label.convexVolume(labelled_data, boundingBoxes=boundingBoxes, centresOfMass=centresOfMass, nProcesses=nProcesses_convex_volume)
+    print(' Done.')
+    print('\tcompactness...', end='')
     compactness = sand_atlas.particle.compactness(labelled_data, boundingBoxes=boundingBoxes, centresOfMass=centresOfMass, volumes=volumes) # compactness
+    print(' Done.')
 
     output[:, 0] = (microns_per_voxel**3)*volumes[1:] # volume
     output[:, 1] = 2*microns_per_voxel*radii[1:] # diameter
@@ -391,9 +408,13 @@ def properties_script():
     # else:
     #     raw_data = None
 
+    print('\n\ncheck here')
+
     df = get_particle_properties(label_data, microns_per_voxel)
     # df.to_csv(f"{json_data["URI"]}-summary.csv", index_label="Particle ID")
     df.to_csv("summary.csv", index_label="Particle ID")
+
+    print('\n\ncheck here')
 
 
 def vdb_to_npy():
@@ -494,9 +515,9 @@ def full_analysis(
         labelled_data = label_binary_data(binary_data)
         sand_atlas.io.save_data(labelled_data, labelled_data_filename, microns_per_voxel=microns_per_voxel)
 
-    labelled_image_to_mesh(labelled_data, sand_type, microns_per_voxel, output_dir, debug=False)
+    # labelled_image_to_mesh(labelled_data, sand_type, microns_per_voxel, output_dir, debug=False)
 
-    sand_atlas.io.make_zips(output_dir, output_dir + "/upload/")
+    # sand_atlas.io.make_zips(output_dir, output_dir + "/upload/")
 
     if not os.path.exists(properties_filename):
         df = get_particle_properties(labelled_data, microns_per_voxel)

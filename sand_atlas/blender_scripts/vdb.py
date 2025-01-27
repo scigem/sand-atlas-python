@@ -173,7 +173,9 @@ for quality in ["ORIGINAL", "100", "30", "10", "3"]:
     radius_offset = (original_volume / volume) ** (1 / 3)
 
     # Scale the mesh based on the voxel size and preserving the volume
-    obj.scale = (voxel_size_m * radius_offset, voxel_size_m * radius_offset, voxel_size_m * radius_offset)
+    # Underflow? (not sure it;s uderflow) to be fixed, scaling with voxel_size 
+    # obj.scale = (voxel_size_m * radius_offset, voxel_size_m * radius_offset, voxel_size_m * radius_offset)
+    obj.scale = (radius_offset, radius_offset, radius_offset)
 
     # Export the mesh as an STL file
     output_path = f"{input_folder}/stl_{quality}/{particle_name}.stl"  # Set the output file path
