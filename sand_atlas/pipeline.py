@@ -519,9 +519,9 @@ def full_analysis(
         labelled_data = label_binary_data(binary_data)
         sand_atlas.io.save_data(labelled_data, labelled_data_filename, microns_per_voxel=microns_per_voxel)
 
-    # labelled_image_to_mesh(labelled_data, sand_type, microns_per_voxel, output_dir, debug=False)
+    labelled_image_to_mesh(labelled_data, sand_type, microns_per_voxel, output_dir, debug=False)
 
-    # sand_atlas.io.make_zips(output_dir, output_dir + "/upload/")
+    sand_atlas.io.make_zips(output_dir, output_dir + "/upload/")
 
     if not os.path.exists(properties_filename):
         df = get_particle_properties(labelled_data, microns_per_voxel)
