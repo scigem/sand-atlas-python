@@ -47,9 +47,13 @@ parser.add_argument("--filename", type=str, help="Path to the STL file")
 parser.add_argument("--frame_end", type=int, default=60, help="End frame (optional, default is 60)")
 
 # Add optional argument for the end frame
-parser.add_argument("--bg_colour", type=str, help="Background colour as a hex string, e.g. 00ff00 (optional)")
+parser.add_argument(
+    "--bg_colour", type=str, help="Background colour as a hex string, e.g. 00ff00 (optional)", default="None"
+)
 
-parser.add_argument("--fg_colour", type=str, help="Foreground colour as a hex string e.g. ff0000 (optional)")
+parser.add_argument(
+    "--fg_colour", type=str, help="Foreground colour as a hex string e.g. ff0000 (optional)", default="None"
+)
 
 parser.add_argument(
     "--resolution", type=str, default="1000x1000", help="Resolution as a string e.g. 1080x1350 (optional)"

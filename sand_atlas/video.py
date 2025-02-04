@@ -89,7 +89,9 @@ def make_website_video(stl_foldername, output_foldername, debug=False):
     for i, file in tqdm(enumerate(files[start_index : start_index + max_files]), total=max_files):
         if not os.path.exists(file[:-4] + ".webm"):
             # Use blender to render an animation of this grain rotating
-            os.system(f"blender --background -t 4 -noaudio --python {blender_script_path} -- " + file + silence)
+            os.system(
+                f"blender --background -t 4 -noaudio --python {blender_script_path} --  --filename " + file + silence
+            )
             # Use ffmpeg to convert the animation into a webm video
             os.system(
                 "ffmpeg -y -framerate 30 -pattern_type glob -i '"
