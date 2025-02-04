@@ -11,6 +11,7 @@ import sand_atlas.io
 import sand_atlas.video
 import sand_atlas.particle
 import sand_atlas.clean
+import spam.label
 
 def gray_to_bw(data, threshold=None, blur=None):
     """
@@ -366,8 +367,8 @@ def properties_script():
     Command-line Arguments:
     - json (str): The path to the JSON file containing the description of the data.
     - label (str): The path to the file containing the labelled data.
-    - raw (str, optional): The path to the file containing the raw data. Default is None.
-    - binning (int, optional): The binning factor to use. Default is None.
+    - --binning (int, optional): The binning factor to use. Default is None.
+    - --output (str, optional): The path to the output file. Default is "summary.csv".
 
     The script performs the following steps:
     1. Parses command-line arguments.
@@ -376,7 +377,7 @@ def properties_script():
     4. Loads and optionally bins the label data.
     5. Loads and optionally bins the raw data if provided.
     6. Computes particle properties using the label and raw data.
-    7. Saves the computed properties to a CSV file named "summary.csv".
+    7. Saves the computed properties to a CSV file.
 
     Returns:
     None
@@ -386,6 +387,7 @@ def properties_script():
     parser.add_argument("label", type=str, help="The path to the file containing the labelled data.", default=None)
     #parser.add_argument("--raw", type=str, help="The path to the file containing the raw data.", default=None)
     parser.add_argument("--binning", type=int, help="The binning factor to use.", default=None)
+    parser.add_argument("--output", type=str, help="The path to the output file.", default="summary.csv")
 
     args = parser.parse_args()
 
@@ -399,6 +401,8 @@ def properties_script():
             microns_per_voxel *= float(args.binning)
 
     label_data = sand_atlas.io.load_data(args.label)
+    label_data = spam.label.label.makeLabelsSequential(label_data)
+
     if args.binning is not None:
         label_data = bin_data(label_data, args.binning)
     # if args.raw is not None:
@@ -412,7 +416,7 @@ def properties_script():
 
     df = get_particle_properties(label_data, microns_per_voxel)
     # df.to_csv(f"{json_data["URI"]}-summary.csv", index_label="Particle ID")
-    df.to_csv("summary.csv", index_label="Particle ID")
+    df.to_csv(args.output, index_label="Particle ID")
 
     print('\n\ncheck here')
 
@@ -502,7 +506,7 @@ def full_analysis(
     if labelled_data_filename is None:
         labelled_data_filename = f"{output_dir}/upload/{sand_type}-labelled.tif"
 
-    properties_filename = f"{output_dir}/summary.csv"
+    properties_filename = f"{output_dir}/{sand_type}.csv"
 
     if os.path.exists(labelled_data_filename):
         labelled_data = sand_atlas.io.load_data(labelled_data_filename)

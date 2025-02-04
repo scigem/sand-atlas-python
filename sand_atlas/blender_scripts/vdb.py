@@ -130,7 +130,7 @@ dim = cube.dimensions
 dim_min_ortho = numpy.amin([dim.x, dim.y, dim.z])
 # print('COMPARE WITH PREVIOUS RESULT:', dim_min_ortho)
 
-original_volume = numpy.sum(data) #* voxel_size_m**3
+original_volume = numpy.sum(data)  # * voxel_size_m**3
 
 # Define voxel sizes for different qualities
 voxel_sizes = [1, dim_min / 100, dim_min / 30, dim_min / 10, dim_min / 3]
@@ -173,9 +173,8 @@ for quality in ["ORIGINAL", "100", "30", "10", "3"]:
     radius_offset = (original_volume / volume) ** (1 / 3)
 
     # Scale the mesh based on the voxel size and preserving the volume
-    # Underflow? (not sure it;s uderflow) to be fixed, scaling with voxel_size 
-    # obj.scale = (voxel_size_m * radius_offset, voxel_size_m * radius_offset, voxel_size_m * radius_offset)
-    obj.scale = (radius_offset, radius_offset, radius_offset)
+    voxel_size_mm = voxel_size_m * 1000
+    obj.scale = (voxel_size_mm * radius_offset, voxel_size_mm * radius_offset, voxel_size_mm * radius_offset)
 
     # Export the mesh as an STL file
     output_path = f"{input_folder}/stl_{quality}/{particle_name}.stl"  # Set the output file path
