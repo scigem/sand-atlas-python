@@ -68,15 +68,16 @@ def save_data(data, filename, microns_per_voxel=None):
         if microns_per_voxel is None:
             tifffile.imwrite(filename, data)
         else:
-            tifffile.imwrite(filename,
-                             resolution=(microns_per_voxel, microns_per_voxel),
-                             resolutionunit='none',
-                             metadata={
-                                "unit": "µm",
-                                "spacing": 1./microns_per_voxel,  # For ImageJ, this sets the z-spacing if a stack
-                                "axes": "ZYX"
-                             }
-                            )
+            tifffile.imwrite(
+                filename,
+                resolution=(microns_per_voxel, microns_per_voxel),
+                resolutionunit="none",
+                metadata={
+                    "unit": "µm",
+                    "spacing": 1.0 / microns_per_voxel,  # For ImageJ, this sets the z-spacing if a stack
+                    "axes": "ZYX",
+                },
+            )
     elif extension.lower() == "raw":
         data.tofile(filename)
     elif extension.lower() == "npz":
