@@ -16,7 +16,7 @@ thresholds = {
     "Edge Density": (0.2, 0.4),
     "Fractal Dimension": (1.5, 1.7),
     "Gradient Std": (10, 25),
-    "Otsu Porosity": (0.2, 0.5),
+    "Otsu Solid Fraction": (0.4, 0.7),
     "Slice-to-slice Variation": (2, 5),
 }
 
@@ -30,7 +30,7 @@ suggestions = {
     "Edge Density": "High density suggests complex shapes or oversegmentation risk",
     "Fractal Dimension": "High = rough shapes; may impact watershed algorithms",
     "Gradient Std": "High variation may cause thresholding instability",
-    "Otsu Porosity": "Very low or very high values may indicate poor separability",
+    "Otsu Solid Fraction": "Very high values may indicate poor separability",
     "Slice-to-slice Variation": "Non-uniform sample or scan instability",
 }
 
@@ -89,10 +89,10 @@ def compute_all_metrics(volume, debug=False):
         ("Structure and Texture", "FFT Peak Frequency", sand_atlas.quality.fft_peak_frequency),
         ("Structure and Texture", "Autocorrelation Range", sand_atlas.quality.autocorrelation_range),
         ("Edge and Shape Complexity", "Edge Density", sand_atlas.quality.edge_density),
-        ("Edge and Shape Complexity", "Fractal Dimension", sand_atlas.quality.fractal_dimension),
+        # ("Edge and Shape Complexity", "Fractal Dimension", sand_atlas.quality.fractal_dimension),
         ("Edge and Shape Complexity", "Gradient Std", sand_atlas.quality.gradient_std),
-        ("3D Homogeneity", "Otsu Porosity", sand_atlas.quality.otsu_porosity),
-        ("3D Homogeneity", "Slice-to-slice Variation", sand_atlas.quality.local_porosity_std),
+        ("3D Homogeneity", "Otsu Solid Fraction", sand_atlas.quality.otsu_solid_fraction),
+        ("3D Homogeneity", "Slice-to-slice Variation", sand_atlas.quality.local_solid_fraction_std),
     ]
 
     results = {
