@@ -1,4 +1,6 @@
 import argparse
+import json
+import pandas as pd
 import concurrent.futures
 from colorama import Fore, Style
 from tqdm import tqdm
@@ -123,7 +125,12 @@ def preflight_script():
     )
     parser.add_argument("--raw", type=str, help="The path to the file containing the raw data.", default=None)
     parser.add_argument("--binning", type=int, help="The binning factor to use.", default=None)
-    # parser.add_argument("--output", type=str, help="The path to the output file.", default="summary.csv")
+    parser.add_argument(
+        "--output",
+        type=str,
+        help="The path to the output file. Can be either a .json or .csv file.",
+        default="summary.json",
+    )
 
     args = parser.parse_args()
 
@@ -134,3 +141,18 @@ def preflight_script():
 
     metrics = compute_all_metrics(volume=data, debug=False)
     print_report(metrics)
+
+    if args.output is not None:
+        if args.output.endswith(".json"):
+            with open(args.output, "w") as f:
+                json.dump(metrics, f, indent=4, default=str)
+        elif args.output.endswith(".csv"):
+            df = pd.DataFrame.from_dict(
+                {f"{cat} - {name}": value for cat, items in metrics.items() for name, value in items.items()},
+                orient="index",
+                columns=["Value"],
+            )
+            df.index.name = "Metric"
+            df.to_csv(args.output)
+        else:
+            raise ValueError("Output file must be either .json or .csv format.")
