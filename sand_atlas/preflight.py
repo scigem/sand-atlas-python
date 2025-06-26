@@ -135,6 +135,12 @@ def preflight_script():
     args = parser.parse_args()
 
     data = sand_atlas.io.load_data(args.raw)
+    # Select centered 1000x1000x1000 subarray if shape is bigger
+    target_shape = (1000, 1000, 1000)
+    if all(s > t for s, t in zip(data.shape, target_shape)):
+        start = [(s - t) // 2 for s, t in zip(data.shape, target_shape)]
+        end = [start[i] + target_shape[i] for i in range(3)]
+        data = data[start[0]:end[0], start[1]:end[1], start[2]:end[2]]
 
     if args.binning is not None:
         data = sand_atlas.pipeline.bin_data(data, args.binning)
