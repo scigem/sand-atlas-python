@@ -5,6 +5,7 @@ import multiprocessing
 from tqdm import tqdm
 import sand_atlas.io
 
+
 def clean_subvolume(label, labelRegion, z_slice, y_slice, x_slice):
     """
     Cleans a subvolume by retaining only the largest connected component associated with a given label.
@@ -84,7 +85,7 @@ def parallel_clean_subvolumes(lab, bounding_boxes, num_processors, removeEdgeLab
     print(f"Starting parallel processing with {num_processors} processors.")
     # Prepare tasks for parallel processing
     tasks = []
-    for label in tqdm(list_of_labels, desc='\tIsolating subvolumes'):
+    for label in tqdm(list_of_labels, desc="\tIsolating subvolumes"):
         # Find the bounding box slices for the current label
         z_slice, y_slice, x_slice = bounding_boxes[label - 1]
         # Extract the subvolume corresponding to the bounding box
@@ -95,20 +96,21 @@ def parallel_clean_subvolumes(lab, bounding_boxes, num_processors, removeEdgeLab
     # Use multiprocessing to process the tasks in parallel
     with multiprocessing.Pool(num_processors) as pool:
         # Execute the tasks in parallel and track progress with a progress bar
-        pool_results = pool.starmap(clean_subvolume, tqdm(tasks, desc='\tProcessing subvolumes'))
+        pool_results = pool.starmap(clean_subvolume, tqdm(tasks, desc="\tProcessing subvolumes"))
 
     # Filter out invalid results (e.g., None) from the processing results
     pool_results = [result for result in pool_results if result is not None]
 
     # Update the cleaned labeled image with the results
-    for label, labelRegion_return, z_slice, y_slice, x_slice in tqdm(pool_results, desc='\tRe-assembling labelled array'):
+    for label, labelRegion_return, z_slice, y_slice, x_slice in tqdm(
+        pool_results, desc="\tRe-assembling labelled array"
+    ):
         # Merge the cleaned subvolume back into the main volume
-        new_lab[z_slice, y_slice, x_slice] = numpy.where(
-            labelRegion_return, label, new_lab[z_slice, y_slice, x_slice]
-        )
+        new_lab[z_slice, y_slice, x_slice] = numpy.where(labelRegion_return, label, new_lab[z_slice, y_slice, x_slice])
 
     # Return the cleaned labeled image
     return new_lab
+
 
 def clean_labels(file_path, num_processors=4, verbosity=0):
     # Step 1: Get the file path and the number of processors from command line arguments
@@ -131,13 +133,13 @@ def clean_labels(file_path, num_processors=4, verbosity=0):
 
     # Step 4: Run the parallel processing
     clean_lab = parallel_clean_subvolumes(lab, bounding_boxes, num_processors)  # Clean the labeled image in parallel
-    del(lab)  # Free memory by deleting the original labeled image
+    del lab  # Free memory by deleting the original labeled image
 
     # Step 5: Save the cleaned labels back to a new tif file
     # Generate the output file path based on the input file name
     output_file_path = os.path.join(
         os.path.dirname(file_path),  # Get the directory of the input file
-        f"{os.path.splitext(os.path.basename(file_path))[0]}_clean.tif"  # Add "_clean" to the file name
+        f"{os.path.splitext(os.path.basename(file_path))[0]}_clean.tif",  # Add "_clean" to the file name
     )
     if verbosity > 0:
         print(f"Saving cleaned 3D labels...", end="")

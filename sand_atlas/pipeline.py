@@ -11,6 +11,7 @@ import sand_atlas.io
 import sand_atlas.video
 import sand_atlas.particle
 import sand_atlas.clean
+import sand_atlas.preflight
 import sand_atlas.multisphere
 import spam.label
 
@@ -547,11 +548,10 @@ def full_analysis(
     # print("Making individual videos")
     # sand_atlas.video.make_individual_videos(stl_foldername, f"{output_dir}/media/")
 
-    if raw_data is not None:
-        if not os.path.exists(f"{output_dir}/upload/{sand_type}-raw.tif"):
-            sand_atlas.io.save_data(
-                raw_data, f"{output_dir}/upload/{sand_type}-raw.tif", microns_per_voxel=microns_per_voxel
-            )
+    if not os.path.exists(f"{output_dir}/upload/{sand_type}-raw.tif"):
+        sand_atlas.io.save_data(
+            raw_data, f"{output_dir}/upload/{sand_type}-raw.tif", microns_per_voxel=microns_per_voxel
+        )
     if not os.path.exists(f"{output_dir}/upload/{sand_type}-labelled.tif"):
         sand_atlas.io.save_data(
             labelled_data, f"{output_dir}/upload/{sand_type}-labelled.tif", microns_per_voxel=microns_per_voxel
