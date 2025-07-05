@@ -10,17 +10,19 @@ import json
 import h5py
 
 
-def load_data(filename):
+def load_data(filename, nx=None, ny=None, nz=None):
     """
     Load data from a file based on its extension.
     Parameters:
     filename (str): The path to the file to be loaded.
+    nx, ny, nz (int, optional): Required for .mic files - dimensions of the 3D volume.
     Returns:
     data: The data loaded from the file. The type of data returned depends on the file extension:
     - For '.tif' or '.tiff' files, returns a memmap or an array from tifffile.
     - For '.raw' files, returns a memmap from numpy.
     - For '.npz' files, returns an array from numpy.
     - For '.nrrd' files, returns the data and header from nrrd.
+    - For '.mic' files, returns a 3D uint8 array from ASCII XCT data.
     """
     extension = filename.split(".")[-1]
     if (extension.lower() == "tif") or (extension.lower() == "tiff"):
@@ -29,7 +31,10 @@ def load_data(filename):
         except Exception:
             data = tifffile.imread(filename)
     elif extension.lower() == "raw":
+        if nx is None or ny is None or nz is None:
+            raise ValueError("For .raw files, you must provide nx, ny, nz parameters")
         data = numpy.memmap(filename)
+
     elif extension.lower() == "npz":
         data = numpy.load(filename, allow_pickle=True)["arr_0"]
     elif extension.lower() == "nrrd":
@@ -37,7 +42,18 @@ def load_data(filename):
     elif extension.lower() == "h5":
         with h5py.File(filename, "r") as f:
             keys = list(f.keys())
-            data = f[keys[0]]
+            data = f[keys[0]].astype(numpy.float32)
+    elif extension.lower() == "mic":
+        if nx is None or ny is None or nz is None:
+            raise ValueError("For .mic files, you must provide nx, ny, nz parameters")
+
+        with open(filename, "r") as f:
+            text = f.read()
+
+        values = numpy.fromstring(text, dtype=numpy.uint8, sep="\n")
+        # Reshape and flip j-axis (data stored j=ny to 1, decreasing)
+        data = values.reshape((nz, ny, nx))
+        data = numpy.flip(data, axis=1)
     else:
         raise ValueError("Unsupported file extension")
 
@@ -68,15 +84,16 @@ def save_data(data, filename, microns_per_voxel=None):
         if microns_per_voxel is None:
             tifffile.imwrite(filename, data)
         else:
-            tifffile.imwrite(filename,
-                             resolution=(microns_per_voxel, microns_per_voxel),
-                             resolutionunit='none',
-                             metadata={
-                                "unit": "µm",
-                                "spacing": 1./microns_per_voxel,  # For ImageJ, this sets the z-spacing if a stack
-                                "axes": "ZYX"
-                             }
-                            )
+            tifffile.imwrite(
+                filename,
+                resolution=(microns_per_voxel, microns_per_voxel),
+                resolutionunit="none",
+                metadata={
+                    "unit": "µm",
+                    "spacing": 1.0 / microns_per_voxel,  # For ImageJ, this sets the z-spacing if a stack
+                    "axes": "ZYX",
+                },
+            )
     elif extension.lower() == "raw":
         data.tofile(filename)
     elif extension.lower() == "npz":
@@ -219,8 +236,15 @@ def make_zips(data_foldername, output_foldername):
 
     for quality in ["ORIGINAL", "100", "30", "10", "3"]:
         os.system(f"zip -j {output_foldername}/meshes_{quality}.zip {data_foldername}/stl_{quality}/*.stl")
+        os.system(f"cp {data_foldername}/stl_{quality}/particle_00001.stl {output_foldername}/ref_mesh_{quality}.stl")
+
+    for quality in [1, 2, 3, 4, 5]:
         os.system(
-            f"cp {data_foldername}/stl_{quality}/particle_00001.stl {output_foldername}/ref_particle_{quality}.stl"
+            f"zip -j {output_foldername}/multisphere_{quality}.zip {data_foldername}/multisphere/quality_{quality}/*.csv"
         )
+        os.system(
+            f"cp {data_foldername}/multisphere/quality_{quality}/particle_00001.csv {output_foldername}/ref_multisphere_{quality}.csv"
+        )
+
     os.system(f"zip -j {output_foldername}/level_sets.zip {data_foldername}/vdb/*.vdb")
     os.system(f"zip -j {output_foldername}/level_sets_YADE.zip {data_foldername}/yade/*.npy")

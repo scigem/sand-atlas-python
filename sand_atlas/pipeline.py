@@ -11,7 +11,9 @@ import sand_atlas.io
 import sand_atlas.video
 import sand_atlas.particle
 import sand_atlas.clean
+import sand_atlas.multisphere
 import spam.label
+
 
 def gray_to_bw(data, threshold=None, blur=None):
     """
@@ -187,7 +189,7 @@ def remove_disconnected_regions(crop):
     # Add the largest component to the cleaned labels
     cleaned_crop = numpy.zeros_like(crop, dtype=bool)
     cleaned_crop[connected_components == largest_component] = True
-    
+
     return cleaned_crop
 
 
@@ -210,52 +212,62 @@ def get_particle_properties(labelled_data, microns_per_voxel):
 
     import spam.label
 
-    header = ['Volume (µm³)', 'Equivalent Diameter (µm)',
-        'Major Axis Length (µm)', 'Middle Axis Length (µm)', 'Minor Axis Length (µm)',
+    header = [
+        "Volume (µm³)",
+        "Equivalent Diameter (µm)",
+        "Major Axis Length (µm)",
+        "Middle Axis Length (µm)",
+        "Minor Axis Length (µm)",
         # 'Major Eigenvector','Middle Eigenvector','Minor Eigenvector',
-        'True Sphericity (-)', 'Convexity (-)', 'Flatness (-)', 'Elongation (-)',
-        'Compactness (-)'
-        ]
-    
+        "True Sphericity (-)",
+        "Convexity (-)",
+        "Flatness (-)",
+        "Elongation (-)",
+        "Compactness (-)",
+    ]
+
     output = numpy.zeros((numpy.amax(labelled_data), len(header)))
-    print('\nCalculating particle properties...')
+    print("\nCalculating particle properties...")
     # output[:, 0] = numpy.unique(labelled_data) # labels
-    print('\tboundingBoxes...', end='')
+    print("\tboundingBoxes...", end="")
     boundingBoxes = spam.label.boundingBoxes(labelled_data)
-    print(' Done.')
-    print('\tcentresOfMass...', end='')
+    print(" Done.")
+    print("\tcentresOfMass...", end="")
     centresOfMass = spam.label.centresOfMass(labelled_data, boundingBoxes=boundingBoxes)
-    print(' Done.')
-    print('\tvolumes...', end='')
+    print(" Done.")
+    print("\tvolumes...", end="")
     volumes = spam.label.volumes(labelled_data, boundingBoxes=boundingBoxes)
-    print(' Done.')
-    print('\tradii...', end='')
+    print(" Done.")
+    print("\tradii...", end="")
     radii = spam.label.equivalentRadii(labelled_data, boundingBoxes=boundingBoxes, volumes=volumes)
-    print(' Done.')
-    print('\tellipse_axes...', end='')
-    ellipse_axes = spam.label.ellipseAxes(labelled_data, volumes) # ellipse_axes
-    print(' Done.')
-    print('\tsphericity...', end='')
+    print(" Done.")
+    print("\tellipse_axes...", end="")
+    ellipse_axes = spam.label.ellipseAxes(labelled_data, volumes)  # ellipse_axes
+    print(" Done.")
+    print("\tsphericity...", end="")
     sphericity = spam.label.trueSphericity(labelled_data, boundingBoxes=boundingBoxes, centresOfMass=centresOfMass)
-    print(' Done.')
+    print(" Done.")
     nProcesses_convex_volume = 4
-    print(f'\tconvex_volume (using {nProcesses_convex_volume} processes)...', end='')
-    convex_volume = spam.label.convexVolume(labelled_data, boundingBoxes=boundingBoxes, centresOfMass=centresOfMass, nProcesses=nProcesses_convex_volume)
-    print(' Done.')
-    print('\tcompactness...', end='')
-    compactness = sand_atlas.particle.compactness(labelled_data, boundingBoxes=boundingBoxes, centresOfMass=centresOfMass, volumes=volumes) # compactness
-    print(' Done.')
+    print(f"\tconvex_volume (using {nProcesses_convex_volume} processes)...", end="")
+    convex_volume = spam.label.convexVolume(
+        labelled_data, boundingBoxes=boundingBoxes, centresOfMass=centresOfMass, nProcesses=nProcesses_convex_volume
+    )
+    print(" Done.")
+    print("\tcompactness...", end="")
+    compactness = sand_atlas.particle.compactness(
+        labelled_data, boundingBoxes=boundingBoxes, centresOfMass=centresOfMass, volumes=volumes
+    )  # compactness
+    print(" Done.")
 
-    output[:, 0] = (microns_per_voxel**3)*volumes[1:] # volume
-    output[:, 1] = 2*microns_per_voxel*radii[1:] # diameter
-    output[:, 2:5] = 2*microns_per_voxel*ellipse_axes[1:] # major, middle, minor axes
-    output[:, 5] = sphericity[1:] # true_sphericity
-    output[:, 6] = volumes[1:]/convex_volume[1:] # convexity
-    output[:, 7] = ellipse_axes[1:,2]/ellipse_axes[1:,1] # flatness
-    output[:, 8] = ellipse_axes[1:,1]/ellipse_axes[1:,0] # elongation
-    output[:, 9] = compactness[1:] # compactness
+    output[:, 0] = (microns_per_voxel**3) * volumes[1:]  # volume
+    output[:, 1] = 2 * microns_per_voxel * radii[1:]  # diameter
+    output[:, 2:5] = 2 * microns_per_voxel * ellipse_axes[1:]  # major, middle, minor axes
+    output[:, 5] = sphericity[1:]  # true_sphericity
+    output[:, 6] = volumes[1:] / convex_volume[1:]  # convexity
+    output[:, 7] = ellipse_axes[1:, 2] / ellipse_axes[1:, 1]  # flatness
+    output[:, 8] = ellipse_axes[1:, 1] / ellipse_axes[1:, 0]  # elongation
+    output[:, 9] = compactness[1:]  # compactness
 
-    
     # numpy.savetxt(filename, output, header=','.join(header), delimiter=',', comments='')
     df = pd.DataFrame(output, columns=header)
     df.index = df.index + 1  # Start indexing at 1
@@ -281,21 +293,22 @@ def get_particle_properties(labelled_data, microns_per_voxel):
     #     }
     # )
 
+
 def clean_labels_script():
     """
     Parses command-line arguments and performs label cleaning on a sand sample.
     This script takes a file containing labelled data and processes it using the specified
     number of processors and verbosity level.
-    
+
     Command-line arguments:
     - label (str): The path to the file containing the labelled data.
     - --num_processors (int, optional): The number of processors to use (default is 4).
     - --verbosity (int, optional): The verbosity level of the output (default is 0).
-    
+
     Returns:
     None
     """
-    
+
     parser = argparse.ArgumentParser(description="Perform a full analysis of a sand sample.")
     parser.add_argument("label", type=str, help="The path to the file containing the labelled data.")
     parser.add_argument("--num_processors", type=int, help="The number of processors to use", default=4)
@@ -303,11 +316,7 @@ def clean_labels_script():
 
     args = parser.parse_args()
 
-    sand_atlas.clean.clean_labels(
-        args.label,
-        num_processors=args.num_processors,
-        verbosity=args.verbosity
-    )
+    sand_atlas.clean.clean_labels(args.label, num_processors=args.num_processors, verbosity=args.verbosity)
 
 
 def full_analysis_script():
@@ -385,7 +394,7 @@ def properties_script():
     parser = argparse.ArgumentParser(description="Perform a full analysis of a sand sample.")
     parser.add_argument("json", type=str, help="The path to the json file containing the description of the data.")
     parser.add_argument("label", type=str, help="The path to the file containing the labelled data.", default=None)
-    #parser.add_argument("--raw", type=str, help="The path to the file containing the raw data.", default=None)
+    # parser.add_argument("--raw", type=str, help="The path to the file containing the raw data.", default=None)
     parser.add_argument("--binning", type=int, help="The binning factor to use.", default=None)
     parser.add_argument("--output", type=str, help="The path to the output file.", default="summary.csv")
 
@@ -412,13 +421,13 @@ def properties_script():
     # else:
     #     raw_data = None
 
-    print('\n\ncheck here')
+    print("\n\ncheck here")
 
     df = get_particle_properties(label_data, microns_per_voxel)
     # df.to_csv(f"{json_data["URI"]}-summary.csv", index_label="Particle ID")
     df.to_csv(args.output, index_label="Particle ID")
 
-    print('\n\ncheck here')
+    print("\n\ncheck here")
 
 
 def vdb_to_npy():
@@ -443,7 +452,7 @@ def vdb_to_npy():
     parser.add_argument("vdb_filename", type=str, help="The path to the VDB file.")
 
     args = parser.parse_args()
-    
+
     blender_script_path = sand_atlas.video.resolve_path_for_blender("blender_scripts/vdb_to_npy.py")
 
     subprocess.run(["blender", "--background", "-noaudio", "--python", blender_script_path, "--", args.vdb_filename])
@@ -521,6 +530,11 @@ def full_analysis(
 
     labelled_image_to_mesh(labelled_data, sand_type, microns_per_voxel, output_dir, debug=False)
 
+    os.makedirs(f"{output_dir}/multisphere/", exist_ok=True)
+    sand_atlas.multisphere.labelled_image_to_multipheres(
+        labelled_data, sand_type, microns_per_voxel, output_dir, debug=False
+    )
+
     sand_atlas.io.make_zips(output_dir, output_dir + "/upload/")
 
     if not os.path.exists(properties_filename):
@@ -533,10 +547,15 @@ def full_analysis(
     # print("Making individual videos")
     # sand_atlas.video.make_individual_videos(stl_foldername, f"{output_dir}/media/")
 
-    if not os.path.exists(f"{output_dir}/upload/{sand_type}-raw.tif"):
-        sand_atlas.io.save_data(raw_data, f"{output_dir}/upload/{sand_type}-raw.tif", microns_per_voxel=microns_per_voxel)
+    if raw_data is not None:
+        if not os.path.exists(f"{output_dir}/upload/{sand_type}-raw.tif"):
+            sand_atlas.io.save_data(
+                raw_data, f"{output_dir}/upload/{sand_type}-raw.tif", microns_per_voxel=microns_per_voxel
+            )
     if not os.path.exists(f"{output_dir}/upload/{sand_type}-labelled.tif"):
-        sand_atlas.io.save_data(labelled_data, f"{output_dir}/upload/{sand_type}-labelled.tif", microns_per_voxel=microns_per_voxel)
+        sand_atlas.io.save_data(
+            labelled_data, f"{output_dir}/upload/{sand_type}-labelled.tif", microns_per_voxel=microns_per_voxel
+        )
 
 
 def bin_data(data, factor):
@@ -566,7 +585,7 @@ def bin_data(data, factor):
     new_shape = (trimmed_shape[0] // factor, trimmed_shape[1] // factor, trimmed_shape[2] // factor)
 
     # Reshape and compute the median for each block
-    original_dtype = data.dtype # Preserve the original data type
+    original_dtype = data.dtype  # Preserve the original data type
 
     downscaled_array = numpy.median(
         trimmed_array.reshape(new_shape[0], factor, new_shape[1], factor, new_shape[2], factor), axis=(1, 3, 5)

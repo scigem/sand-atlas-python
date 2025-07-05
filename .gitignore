@@ -2,3 +2,5 @@
 __pycache__
 dist/
 docs/build/
+venv/
+.venv/

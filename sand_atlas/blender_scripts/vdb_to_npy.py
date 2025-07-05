@@ -1,7 +1,7 @@
 import bpy
 import numpy as np
 import sys
-import pyopenvdb as vdb
+import openvdb as vdb
 
 # Ensure the filepath is passed as an argument
 if len(sys.argv) < 6:
