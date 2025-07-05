@@ -4,3 +4,6 @@ dist/
 docs/build/
 venv/
 .venv/
+output/
+*.egg-info/
+*.egg

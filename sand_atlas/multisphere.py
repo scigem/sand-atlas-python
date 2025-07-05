@@ -73,38 +73,17 @@ def binary_to_clump(
     """
 
     max_dim = max(img.shape)
-    min_distance = max_dim // 2
+    min_distance = max_dim // 4
     true_volume = np.sum(img > 0) * microns_per_voxel**3
 
-    coords = []
-    while len(coords) == 0:
-        if min_distance < 2:
-            sys.exit("Did not find any coordinates for multispheres in the image.")
-        min_distance = min_distance // 2
-        dt = distance_transform_edt(img)
-        coords = peak_local_max(dt, min_distance=min_distance, labels=img)
-
-    clump = []
-    for coord in coords:
-        clump.append(
-            (
-                coord[0],
-                coord[1],
-                coord[2],
-                dt[int(coord[0]), int(coord[1]), int(coord[2])],
-            )
-        )
-
-    # now create an artificial image from the clump
+    # create an artificial image from the clump
     projected_img = np.zeros_like(img, dtype=np.uint8)
     x = np.arange(img.shape[0])
     y = np.arange(img.shape[1])
     z = np.arange(img.shape[2])
     X, Y, Z = np.meshgrid(x, y, z, indexing="ij")
-    for sphere in clump:
-        xp, yp, zp, radius = sphere
-        this_projected_img = (X - xp) ** 2 + (Y - yp) ** 2 + (Z - zp) ** 2 <= radius**2
-        projected_img[this_projected_img] = 1
+
+    clump = []
 
     for i in range(numpasses):
         min_distance = min_distance // 2 if min_distance > 1 else 1
@@ -130,14 +109,15 @@ def binary_to_clump(
             this_projected_img = distances <= radius**2
             projected_img[this_projected_img] = 1
 
-        diff_img = np.logical_and(img > 0, projected_img == 0).astype(np.uint8)
-        error = np.sum(diff_img) / np.sum(img > 0)
-        print(f"Pass {i+1}/{numpasses} completed. Current clump size: " f"{len(clump)} spheres. Error: {error:.4f}")
-
         if save_all_passes or debug:
             os.makedirs(f"{output_dir}/multisphere/quality_{i+1}", exist_ok=True)
 
         if debug:
+            error = np.sum(diff_img) / np.sum(img > 0)
+            print(f"Pass {i+1}/{numpasses} completed. Current clump size: " f"{len(clump)} spheres. Error: {error:.4f}")
+
+            diff_img = np.logical_and(img > 0, projected_img == 0).astype(np.uint8)
+
             fig = plt.figure()
             ax = fig.add_subplot(131, projection="3d")
             ax.voxels(img, alpha=0.5)
@@ -160,7 +140,6 @@ def binary_to_clump(
         vol_scaling = (true_volume / clump_volume) ** (1 / 3)  # Scale factor to match the volume
         to_save[:, :3] *= vol_scaling  # Scale the coordinates by the volume scaling factor
         to_save[:, 3] *= vol_scaling  # Scale the radius by the volume scaling factor
-        # to_save *= microns_per_voxel  # Scale the coordinates by microns per voxel
 
         if save_all_passes:
             np.savetxt(
@@ -170,7 +149,6 @@ def binary_to_clump(
                 header="x (microns),y (microns),z (microns),radius (microns)",
                 comments="",
             )
-    return np.array(clump), projected_img
 
 
 def stl_to_clump(inputFolder, N, rMin=0, div=102, overlap=0.6):
@@ -219,4 +197,4 @@ if __name__ == "__main__":
     # fake_image = np.zeros((100, 100, 100), dtype=np.uint8)
     # fake_image[30:70, 30:70, 30:70] = 1
 
-    # clump, projected_img = binary_to_clump(fake_image, numpasses=7, debug=False, save_all_passes=True)
+    # binary_to_clump(fake_image, numpasses=7, debug=False, save_all_passes=True)
