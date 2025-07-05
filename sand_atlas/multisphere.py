@@ -156,7 +156,7 @@ def binary_to_clump(
 
         to_save = np.array(clump)
         # scale the final clump to have the same volume as the original image
-        clump_volume = np.sum([4 / 3 * np.pi * (radius**3) for _, _, _, radius in clump])
+        clump_volume = np.sum(projected_img > 0) * microns_per_voxel**3
         vol_scaling = (true_volume / clump_volume) ** (1 / 3)  # Scale factor to match the volume
         to_save[:, :3] *= vol_scaling  # Scale the coordinates by the volume scaling factor
         to_save[:, 3] *= vol_scaling  # Scale the radius by the volume scaling factor
