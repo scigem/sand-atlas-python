@@ -24,16 +24,16 @@ thresholds = {
 
 # Suggestions
 suggestions = {
-    "Global SNR": "Increase X-ray current or reduce scan speed",
-    "Modality Index": "Histogram not clearly bimodal; improve contrast or material difference",
-    "Entropy": "Too much texture/noise; reduce scan noise or smooth sample",
-    "FFT Peak Frequency": "Low frequency = large features; consider voxel size",
-    "Autocorrelation Range": "Low range = noisy image; try filtering",
-    "Edge Density": "High density suggests complex shapes or oversegmentation risk",
-    "Fractal Dimension": "High = rough shapes; may impact watershed algorithms",
-    "Gradient Std": "High variation may cause thresholding instability",
-    "Otsu Solid Fraction": "Very high values may indicate poor separability",
-    "Slice-to-slice Variation": "Non-uniform sample or scan instability",
+    "Global SNR": "Low contrast - increase X-ray current or reduce scan speed",
+    "Modality Index": "Poor phase separation - check sample prep or increase contrast",
+    "Entropy": "Inconsistent texture - apply denoising or increase scan time",
+    "FFT Peak Frequency": "Dominant frequency mismatch - adjust voxel size to particle size",
+    "Autocorrelation Range": "Short correlation length - high noise, consider filtering",
+    "Edge Density": "Too many edges detected - may cause oversegmentation",
+    "Fractal Dimension": "Complex surface roughness - may need morphological smoothing",
+    "Gradient Std": "Poor edge quality - increase contrast or reduce noise",
+    "Otsu Solid Fraction": "Extreme solid fraction - check thresholding assumptions",
+    "Slice-to-slice Variation": "Inconsistent quality - check sample or scanner stability",
 }
 
 
