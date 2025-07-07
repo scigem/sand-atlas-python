@@ -259,11 +259,12 @@ def gradient_std(volume, debug=False):
     return inverted_metric
 
 
-def otsu_solid_fraction(volume, debug=False):
+def otsu_solid_fraction(volume, debug=False, maskValue=0):
     """
     Estimate solid fraction from a global Otsu threshold applied to a 3D volume. High solid fraction means not many voids, lots of particles in contact and difficult to segment.
     """
-    thresh = filters.threshold_otsu(volume)
+    # Otsu is computed ignoring the mask
+    thresh = filters.threshold_otsu(volume[volume!=maskValue])
     binary = volume > thresh
     solid_fraction = np.sum(binary) / volume.size
     if debug:

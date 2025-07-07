@@ -23,6 +23,7 @@ dependencies = [
     "h5py",
     "spam",
     "tqdm",
+    "colorama",
 ]
 
 requires-python = ">=3.8"

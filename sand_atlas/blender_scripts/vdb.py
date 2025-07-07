@@ -1,6 +1,6 @@
 import sys
 import bpy
-import pyopenvdb
+import openvdb as vdb
 import numpy
 import bmesh
 
@@ -77,18 +77,18 @@ data = numpy.load(input_file)
 input_folder = "/".join(input_file.split("/")[:-2])  # Get the folder name stripping the "npy" part too
 particle_name = input_file.split("/")[-1].split(".")[0]
 
-grid = pyopenvdb.FloatGrid()
+grid = vdb.FloatGrid()
 grid.copyFromArray(data.astype(float))
 
 grid.background = 0.0
-grid.gridClass = pyopenvdb.GridClass.FOG_VOLUME
+grid.gridClass = vdb.GridClass.FOG_VOLUME
 grid.name = "density"
 
-# Write the OpenVDB grid to a file
+# Write the vdb grid to a file
 vdb_file = "/tmp/volume.vdb"
-pyopenvdb.write(vdb_file, grids=[grid])
+vdb.write(vdb_file, grids=[grid])
 
-# Import the OpenVDB file into Blender
+# Import the vdb file into Blender
 bpy.ops.object.volume_import(filepath=vdb_file)
 
 # Deselect all objects
@@ -181,11 +181,11 @@ for quality in ["ORIGINAL", "100", "30", "10", "3"]:
     bpy.ops.wm.stl_export(filepath=output_path, export_selected_objects=True, apply_modifiers=True)
 
 # Set the grid as a level set
-grid.transform = pyopenvdb.createLinearTransform(voxelSize=1.0)
+grid.transform = vdb.createLinearTransform(voxelSize=1.0)
 
 # Write the grid to a VDB file
 output_path = f"{input_folder}/vdb/{particle_name}.vdb"
-pyopenvdb.write(output_path, grids=[grid])
+vdb.write(output_path, grids=[grid])
 
 
 # Write the grid to a NPY file
