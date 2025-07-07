@@ -1,19 +1,15 @@
 import os
-import sys
 import numpy as np
-import scipy.optimize as opt
 import matplotlib.pyplot as plt
 
 from glob import glob
-
-# from CLUMP import GenerateClump_Euclidean_3D
-from scipy.ndimage import distance_transform_edt, maximum_filter
-from skimage.measure import label, regionprops
-from skimage.segmentation import watershed
+from tqdm import tqdm
+from scipy.ndimage import distance_transform_edt
 from skimage.feature import peak_local_max
 from skimage.morphology import remove_small_objects
 import spam.label
-from mpl_toolkits.mplot3d import Axes3D
+
+# from CLUMP import GenerateClump_Euclidean_3D
 
 
 def labelled_image_to_multipheres(labelled_data, sand_type, microns_per_voxel, output_dir, debug=False):
@@ -25,11 +21,14 @@ def labelled_image_to_multipheres(labelled_data, sand_type, microns_per_voxel, o
         output_dir: Directory to save the output files.
         debug: If True, will generate debug plots.
     """
+
+    print(f"Converting labelled image to multisphere representation for {sand_type}...")
+
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
     boundingBoxes = spam.label.boundingBoxes(labelled_data)
-    for l in np.unique(labelled_data):
+    for l in tqdm(np.unique(labelled_data), desc="Particle"):
         if l == 0:
             continue
 
@@ -153,7 +152,7 @@ def binary_to_clump(
 
 def stl_to_clump(inputFolder, N, rMin=0, div=102, overlap=0.6):
     """
-    Convert an STL file to a clump representation.
+    Convert an STL file to a clump representation. Not in use for the sand atlas, just for comparison with alternative methods.
 
     This function uses the CLUMP library to generate a clump from a given STL file.
     It allows for customization of parameters such as the number of spheres, minimum radius,
@@ -184,6 +183,42 @@ def stl_to_clump(inputFolder, N, rMin=0, div=102, overlap=0.6):
         )
 
 
+def view_multisphere(filename):
+    """
+    View a multisphere representation from a CSV file.
+
+    This function reads a CSV file containing the multisphere data and visualizes it using matplotlib.
+    The CSV file should contain columns for x, y, z coordinates and radius of each sphere.
+    """
+    from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+    from matplotlib import cm
+
+    data = np.loadtxt(filename, delimiter=",", skiprows=1)
+    x, y, z, radius = data[:, 0], data[:, 1], data[:, 2], data[:, 3]
+
+    fig = plt.figure(figsize=(10, 10))
+    ax = fig.add_subplot(111, projection="3d")
+    # Normalize radii for color mapping
+    norm = plt.Normalize(radius.min(), radius.max())
+    colors = cm.viridis(norm(radius))
+
+    # Draw each sphere as a surface
+    u = np.linspace(0, 2 * np.pi, 24)
+    v = np.linspace(0, np.pi, 12)
+    for xi, yi, zi, ri, ci in zip(x, y, z, radius, colors):
+        xs = xi + ri * np.outer(np.cos(u), np.sin(v))
+        ys = yi + ri * np.outer(np.sin(u), np.sin(v))
+        zs = zi + ri * np.outer(np.ones_like(u), np.cos(v))
+        ax.plot_surface(xs, ys, zs, color=ci, alpha=0.5, linewidth=0, antialiased=True)
+
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
+    ax.set_zlabel("Z")
+    ax.set_box_aspect([np.ptp(x), np.ptp(y), np.ptp(z)])
+    plt.tight_layout()
+    plt.show()
+
+
 if __name__ == "__main__":
     import argparse
 
@@ -192,9 +227,9 @@ if __name__ == "__main__":
     parser.add_argument("N", type=int, help="Number of spheres in the clump.")
     args = parser.parse_args()
 
-    stl_to_clump(args.inputFolder, args.N)
+    # stl_to_clump(args.inputFolder, args.N)
 
-    # fake_image = np.zeros((100, 100, 100), dtype=np.uint8)
-    # fake_image[30:70, 30:70, 30:70] = 1
+    fake_image = np.zeros((100, 100, 100), dtype=np.uint8)
+    fake_image[30:70, 30:70, 30:70] = 1
 
-    # binary_to_clump(fake_image, numpasses=7, debug=False, save_all_passes=True)
+    binary_to_clump(fake_image, numpasses=7, debug=False, save_all_passes=True)
