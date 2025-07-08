@@ -12,7 +12,8 @@ import sand_atlas.video
 import sand_atlas.particle
 import sand_atlas.clean
 import sand_atlas.preflight
-import sand_atlas.multisphere
+
+# import sand_atlas.multisphere
 import spam.label
 
 
@@ -531,10 +532,10 @@ def full_analysis(
 
     labelled_image_to_mesh(labelled_data, sand_type, microns_per_voxel, output_dir, debug=False)
 
-    os.makedirs(f"{output_dir}/multisphere/", exist_ok=True)
-    sand_atlas.multisphere.labelled_image_to_multipheres(
-        labelled_data, sand_type, microns_per_voxel, output_dir, debug=False
-    )
+    # os.makedirs(f"{output_dir}/multisphere/", exist_ok=True)
+    # sand_atlas.multisphere.labelled_image_to_multipheres(
+    #     labelled_data, sand_type, microns_per_voxel, output_dir, debug=False
+    # )
 
     sand_atlas.io.make_zips(output_dir, output_dir + "/upload/")
 
