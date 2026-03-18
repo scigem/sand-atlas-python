@@ -6,6 +6,12 @@ import numpy as np
 
 
 def import_pipeline_with_fake_spam():
+    def make_labels_sequential(lab):
+        relabelled = np.zeros_like(lab)
+        for new_label, label in enumerate(sorted(label for label in np.unique(lab) if label != 0), start=1):
+            relabelled[lab == label] = new_label
+        return relabelled
+
     fake_spam = types.ModuleType("spam")
     fake_spam_label = types.ModuleType("spam.label")
 
@@ -16,8 +22,7 @@ def import_pipeline_with_fake_spam():
     fake_spam_label.ellipseAxes = lambda lab, volumes: np.ones((int(lab.max()) + 1, 3))
     fake_spam_label.trueSphericity = lambda lab, **kwargs: np.ones(int(lab.max()) + 1)
     fake_spam_label.convexVolume = lambda lab, **kwargs: np.arange(int(lab.max()) + 1) + 1
-    fake_spam_label.makeLabelsSequential = lambda lab: lab
-    fake_spam_label.label = types.SimpleNamespace(makeLabelsSequential=lambda lab: lab)
+    fake_spam_label.label = types.SimpleNamespace(makeLabelsSequential=make_labels_sequential)
 
     fake_spam.label = fake_spam_label
 
@@ -49,7 +54,7 @@ def test_get_particle_properties_excludes_edge_particles_from_summary(monkeypatc
 
     def fake_volumes(lab, **kwargs):
         recorded["unique_labels"] = np.unique(lab).tolist()
-        return np.array([0, 8], dtype=float)
+        return np.array([0, np.count_nonzero(lab == 1)], dtype=float)
 
     monkeypatch.setattr(pipeline.spam.label, "volumes", fake_volumes)
     monkeypatch.setattr(pipeline.spam.label, "boundingBoxes", lambda lab: None)
@@ -69,3 +74,26 @@ def test_get_particle_properties_excludes_edge_particles_from_summary(monkeypatc
     assert recorded["unique_labels"] == [0, 1]
     assert list(df.index) == [1]
     assert df.shape[0] == 1
+
+
+def test_get_particle_properties_returns_empty_dataframe_when_all_particles_touch_edges():
+    pipeline = import_pipeline_with_fake_spam()
+
+    labelled_data = np.zeros((4, 4, 4), dtype=int)
+    labelled_data[0, 1:3, 1:3] = 1
+
+    df = pipeline.get_particle_properties(labelled_data, microns_per_voxel=1.0)
+
+    assert df.empty
+    assert list(df.columns) == [
+        "Volume (µm³)",
+        "Equivalent Diameter (µm)",
+        "Major Axis Length (µm)",
+        "Middle Axis Length (µm)",
+        "Minor Axis Length (µm)",
+        "True Sphericity (-)",
+        "Convexity (-)",
+        "Flatness (-)",
+        "Elongation (-)",
+        "Compactness (-)",
+    ]
