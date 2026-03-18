@@ -84,6 +84,40 @@ def label_binary_data(binary_data, minimum_voxels=100):
     return relabelled
 
 
+def filter_particles_touching_edges(labelled_data):
+    """
+    Remove particles that touch the image boundary and relabel the remaining particles sequentially.
+
+    Parameters:
+    labelled_data : numpy.ndarray
+        3D array where each voxel is labelled with an integer indicating the particle it belongs to.
+
+    Returns:
+    numpy.ndarray
+        A 3D array containing only particles that do not touch the image boundary, relabelled from 1..N.
+    """
+
+    filtered_data = numpy.zeros_like(labelled_data)
+    props = regionprops(labelled_data)
+    nx, ny, nz = labelled_data.shape
+    next_label = 1
+
+    for prop in props:
+        x_min, y_min, z_min, x_max, y_max, z_max = prop.bbox
+
+        if x_min == 0 or y_min == 0 or z_min == 0 or x_max == nx or y_max == ny or z_max == nz:
+            continue
+
+        crop = labelled_data[x_min:x_max, y_min:y_max, z_min:z_max]
+        filtered_crop = filtered_data[x_min:x_max, y_min:y_max, z_min:z_max]
+        filtered_crop[crop == prop.label] = next_label
+        next_label += 1
+
+    num_remaining = next_label - 1
+    print(f"Filtered out {len(props) - num_remaining} edge-touching particles. {num_remaining} labels remain.")
+    return filtered_data
+
+
 def labelled_image_to_mesh(labelled_data, sand_type, microns_per_voxel, output_dir, debug=False):
     """
     Converts labelled image data to 3D mesh files using Blender.
@@ -111,11 +145,13 @@ def labelled_image_to_mesh(labelled_data, sand_type, microns_per_voxel, output_d
         if not os.path.exists(f"{output_dir}/{subfolder}/"):
             os.mkdir(f"{output_dir}/{subfolder}/")
 
-    num_particles = numpy.amax(labelled_data)
+    filtered_labelled_data = filter_particles_touching_edges(labelled_data)
+
+    num_particles = numpy.amax(filtered_labelled_data)
     print(f"Found {num_particles} labels")
 
     spacing = (voxel_size_m, voxel_size_m, voxel_size_m)
-    props = regionprops(labelled_data, spacing=spacing)
+    props = regionprops(filtered_labelled_data, spacing=spacing)
     print("Calculated region properties")
 
     # # filter out small particles
@@ -126,44 +162,38 @@ def labelled_image_to_mesh(labelled_data, sand_type, microns_per_voxel, output_d
 
     # print(f"Only {j} particles are larger than 100 voxels")
 
-    nx, ny, nz = labelled_data.shape
     j = 0
 
     for i in tqdm(range(num_particles)):
-        # if props[i].area > 100 * (voxel_size_m**3):
-
         x_min, y_min, z_min, x_max, y_max, z_max = props[i].bbox
 
-        if x_min == 0 or y_min == 0 or z_min == 0 or x_max == nx or y_max == ny or z_max == nz:
-            print(f"Particle {i} touching edge of the box, skipping")
-        else:
-            crop = labelled_data[x_min:x_max, y_min:y_max, z_min:z_max]
+        crop = filtered_labelled_data[x_min:x_max, y_min:y_max, z_min:z_max]
 
-            this_particle = crop == props[i].label
+        this_particle = crop == props[i].label
 
-            this_particle = remove_disconnected_regions(this_particle)
+        this_particle = remove_disconnected_regions(this_particle)
 
-            this_particle = numpy.pad(this_particle, 1, mode="constant")
+        this_particle = numpy.pad(this_particle, 1, mode="constant")
 
-            outname = f"{output_dir}/npy/particle_{props[i].label:05}.npy"
-            numpy.save(outname, this_particle)
+        outname = f"{output_dir}/npy/particle_{props[i].label:05}.npy"
+        numpy.save(outname, this_particle)
 
-            # print(str(voxel_size_m))
+        # print(str(voxel_size_m))
 
-            subprocess.run(
-                [
-                    "blender",
-                    "--background",
-                    "-noaudio",
-                    "--python",
-                    blender_script_path,
-                    "--",
-                    outname,
-                    str(voxel_size_m),  # Pass voxel_size as an argument
-                ]
-            )
+        subprocess.run(
+            [
+                "blender",
+                "--background",
+                "-noaudio",
+                "--python",
+                blender_script_path,
+                "--",
+                outname,
+                str(voxel_size_m),  # Pass voxel_size as an argument
+            ]
+        )
 
-            j += 1
+        j += 1
     print(f"{j} out of {num_particles} particles saved to disk")
 
 
@@ -228,36 +258,54 @@ def get_particle_properties(labelled_data, microns_per_voxel):
         "Compactness (-)",
     ]
 
-    output = numpy.zeros((numpy.amax(labelled_data), len(header)))
+    filtered_labelled_data = filter_particles_touching_edges(labelled_data)
+    num_particles = numpy.amax(filtered_labelled_data)
+
+    if num_particles == 0:
+        return pd.DataFrame(columns=header)
+
     print("\nCalculating particle properties...")
     # output[:, 0] = numpy.unique(labelled_data) # labels
     print("\tboundingBoxes...", end="")
-    boundingBoxes = spam.label.boundingBoxes(labelled_data)
+    boundingBoxes = spam.label.boundingBoxes(filtered_labelled_data)
     print(" Done.")
     print("\tcentresOfMass...", end="")
-    centresOfMass = spam.label.centresOfMass(labelled_data, boundingBoxes=boundingBoxes)
+    centresOfMass = spam.label.centresOfMass(filtered_labelled_data, boundingBoxes=boundingBoxes)
     print(" Done.")
     print("\tvolumes...", end="")
-    volumes = spam.label.volumes(labelled_data, boundingBoxes=boundingBoxes)
+    volumes = spam.label.volumes(filtered_labelled_data, boundingBoxes=boundingBoxes)
     print(" Done.")
+
+    if len(volumes) != num_particles + 1:
+        raise ValueError(
+            f"Expected {num_particles + 1} volume entries (background + {num_particles} particles),"
+            f" but got {len(volumes)}."
+        )
+
+    output = numpy.zeros((num_particles, len(header)))
     print("\tradii...", end="")
-    radii = spam.label.equivalentRadii(labelled_data, boundingBoxes=boundingBoxes, volumes=volumes)
+    radii = spam.label.equivalentRadii(filtered_labelled_data, boundingBoxes=boundingBoxes, volumes=volumes)
     print(" Done.")
     print("\tellipse_axes...", end="")
-    ellipse_axes = spam.label.ellipseAxes(labelled_data, volumes)  # ellipse_axes
+    ellipse_axes = spam.label.ellipseAxes(filtered_labelled_data, volumes)  # ellipse_axes
     print(" Done.")
     print("\tsphericity...", end="")
-    sphericity = spam.label.trueSphericity(labelled_data, boundingBoxes=boundingBoxes, centresOfMass=centresOfMass)
+    sphericity = spam.label.trueSphericity(
+        filtered_labelled_data, boundingBoxes=boundingBoxes, centresOfMass=centresOfMass
+    )
     print(" Done.")
     nProcesses_convex_volume = 4
     print(f"\tconvex_volume (using {nProcesses_convex_volume} processes)...", end="")
     convex_volume = spam.label.convexVolume(
-        labelled_data, boundingBoxes=boundingBoxes, centresOfMass=centresOfMass, nProcesses=nProcesses_convex_volume
+        filtered_labelled_data,
+        boundingBoxes=boundingBoxes,
+        centresOfMass=centresOfMass,
+        nProcesses=nProcesses_convex_volume,
     )
     print(" Done.")
     print("\tcompactness...", end="")
     compactness = sand_atlas.particle.compactness(
-        labelled_data, boundingBoxes=boundingBoxes, centresOfMass=centresOfMass, volumes=volumes
+        filtered_labelled_data, boundingBoxes=boundingBoxes, centresOfMass=centresOfMass, volumes=volumes
     )  # compactness
     print(" Done.")
 
