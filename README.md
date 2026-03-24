@@ -1,5 +1,6 @@
 # Sand Atlas
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![codecov](https://codecov.io/gh/scigem/sand-atlas-python/graph/badge.svg?branch=main)](https://codecov.io/gh/scigem/sand-atlas-python)
 
 [Documentation here](https://scigem.github.io/sand-atlas-python/), or compile it yourself following the details below.
 
@@ -54,12 +55,3 @@ If you would like to download a specific particle, you can do this via
 import sand_atlas
 sand_atlas.data.get_by_id('SAND-NAME', MESH-QUALITY, PARTICLE-ID)
 ```
-
-## Documentation
-
-We use `sphinx` to manage the docs. Update documentation with:
-```
-cd docs
-make html
-```
-Once these are built, you can commit and push the changes to github to have them refreshed on github pages. You can also view them locally.

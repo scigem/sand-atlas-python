@@ -42,7 +42,7 @@ def load_data(filename, nx=None, ny=None, nz=None):
     elif extension.lower() == "h5":
         with h5py.File(filename, "r") as f:
             keys = list(f.keys())
-            data = f[keys[0]].astype(numpy.float32)
+            data = f[keys[0]][()].astype(numpy.float32)
     elif extension.lower() == "mic":
         if nx is None or ny is None or nz is None:
             raise ValueError("For .mic files, you must provide nx, ny, nz parameters")
@@ -86,6 +86,7 @@ def save_data(data, filename, microns_per_voxel=None):
         else:
             tifffile.imwrite(
                 filename,
+                data,
                 resolution=(microns_per_voxel, microns_per_voxel),
                 resolutionunit="none",
                 metadata={

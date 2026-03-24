@@ -55,3 +55,31 @@ target-version = ['py312']
 
 [tool.flake8]
 max-line-length = 120
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--strict-markers"
+markers = [
+    "unit: fast isolated tests for library logic",
+    "feature: user-facing behavior tests for scripts and workflows",
+    "integration: multi-step pipeline integration tests",
+    "external: tests that require external tools such as Blender or FFmpeg",
+    "network: tests that exercise network-facing code paths",
+    "slow: long-running tests excluded from the default developer loop",
+]
+
+[tool.coverage.run]
+source = ["sand_atlas"]
+omit = [
+    "sand_atlas/blender_scripts/*",
+    "sand_atlas/matlab_scripts/*",
+]
+
+[tool.coverage.report]
+skip_empty = true
+show_missing = true
+fail_under = 75
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+]

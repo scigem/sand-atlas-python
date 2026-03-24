@@ -118,6 +118,120 @@ def filter_particles_touching_edges(labelled_data):
     return filtered_data
 
 
+def safe_true_sphericity(labelled_data, boundingBoxes=None, centresOfMass=None):
+    """
+    Calculate sphericity while tolerating degenerate particles that cannot be surfaced.
+
+    Some particles can collapse to a constant-valued cropped volume inside
+    ``spam.label.trueSphericity``. In that case ``skimage.measure.marching_cubes`` raises
+    ``ValueError('Surface level must be within volume data range.')``. Rather than aborting the
+    whole sample, fall back to per-particle evaluation and mark only the problematic particles as
+    missing.
+    """
+
+    try:
+        return spam.label.trueSphericity(
+            labelled_data,
+            boundingBoxes=boundingBoxes,
+            centresOfMass=centresOfMass,
+        )
+    except ValueError as exc:
+        if "Surface level must be within volume data range." not in str(exc):
+            raise
+
+    num_particles = int(numpy.amax(labelled_data))
+    sphericity = numpy.full(num_particles + 1, numpy.nan, dtype=float)
+    sphericity[0] = 0.0
+    failed_particles = []
+
+    for label_id in range(1, num_particles + 1):
+        single_particle = (labelled_data == label_id).astype(numpy.uint8)
+
+        if not numpy.any(single_particle):
+            continue
+
+        single_bounding_boxes = spam.label.boundingBoxes(single_particle)
+        single_centres_of_mass = spam.label.centresOfMass(single_particle, boundingBoxes=single_bounding_boxes)
+
+        try:
+            single_sphericity = spam.label.trueSphericity(
+                single_particle,
+                boundingBoxes=single_bounding_boxes,
+                centresOfMass=single_centres_of_mass,
+            )
+            sphericity[label_id] = single_sphericity[1]
+        except ValueError as particle_exc:
+            if "Surface level must be within volume data range." not in str(particle_exc):
+                raise
+            failed_particles.append(label_id)
+
+    if failed_particles:
+        print(
+            f" Warning: skipped true sphericity for {len(failed_particles)} degenerate particle(s):"
+            f" {failed_particles}"
+        )
+
+    return sphericity
+
+
+def safe_compactness(labelled_data, volumes=None, boundingBoxes=None, centresOfMass=None):
+    """
+    Calculate compactness while tolerating particles that cannot be surfaced.
+
+    Some particles can collapse to a constant-valued cropped volume inside
+    ``sand_atlas.particle.compactness``. In that case ``skimage.measure.marching_cubes`` raises
+    ``ValueError('Surface level must be within volume data range.')``. Rather than aborting the
+    whole sample, fall back to per-particle evaluation and mark only the problematic particles as
+    missing.
+    """
+
+    try:
+        return sand_atlas.particle.compactness(
+            labelled_data,
+            volumes=volumes,
+            boundingBoxes=boundingBoxes,
+            centresOfMass=centresOfMass,
+        )
+    except ValueError as exc:
+        if "Surface level must be within volume data range." not in str(exc):
+            raise
+
+    num_particles = int(numpy.amax(labelled_data))
+    compactness = numpy.full(num_particles + 1, numpy.nan, dtype=float)
+    compactness[0] = 0.0
+    failed_particles = []
+
+    for label_id in range(1, num_particles + 1):
+        single_particle = (labelled_data == label_id).astype(numpy.uint8)
+
+        if not numpy.any(single_particle):
+            continue
+
+        single_bounding_boxes = spam.label.boundingBoxes(single_particle)
+        single_centres_of_mass = spam.label.centresOfMass(single_particle, boundingBoxes=single_bounding_boxes)
+        single_volumes = spam.label.volumes(single_particle, boundingBoxes=single_bounding_boxes)
+
+        try:
+            single_compactness = sand_atlas.particle.compactness(
+                single_particle,
+                volumes=single_volumes,
+                boundingBoxes=single_bounding_boxes,
+                centresOfMass=single_centres_of_mass,
+            )
+            compactness[label_id] = single_compactness[1]
+        except ValueError as particle_exc:
+            if "Surface level must be within volume data range." not in str(particle_exc):
+                raise
+            failed_particles.append(label_id)
+
+    if failed_particles:
+        print(
+            f" Warning: skipped compactness for {len(failed_particles)} degenerate particle(s):" f" {failed_particles}"
+        )
+
+    return compactness
+
+
 def labelled_image_to_mesh(labelled_data, sand_type, microns_per_voxel, output_dir, debug=False):
     """
     Converts labelled image data to 3D mesh files using Blender.
@@ -290,9 +404,7 @@ def get_particle_properties(labelled_data, microns_per_voxel):
     ellipse_axes = spam.label.ellipseAxes(filtered_labelled_data, volumes)  # ellipse_axes
     print(" Done.")
     print("\tsphericity...", end="")
-    sphericity = spam.label.trueSphericity(
-        filtered_labelled_data, boundingBoxes=boundingBoxes, centresOfMass=centresOfMass
-    )
+    sphericity = safe_true_sphericity(filtered_labelled_data, boundingBoxes=boundingBoxes, centresOfMass=centresOfMass)
     print(" Done.")
     nProcesses_convex_volume = 4
     print(f"\tconvex_volume (using {nProcesses_convex_volume} processes)...", end="")
@@ -304,7 +416,7 @@ def get_particle_properties(labelled_data, microns_per_voxel):
     )
     print(" Done.")
     print("\tcompactness...", end="")
-    compactness = sand_atlas.particle.compactness(
+    compactness = safe_compactness(
         filtered_labelled_data, boundingBoxes=boundingBoxes, centresOfMass=centresOfMass, volumes=volumes
     )  # compactness
     print(" Done.")
@@ -471,13 +583,9 @@ def properties_script():
     # else:
     #     raw_data = None
 
-    print("\n\ncheck here")
-
     df = get_particle_properties(label_data, microns_per_voxel)
     # df.to_csv(f"{json_data["URI"]}-summary.csv", index_label="Particle ID")
     df.to_csv(args.output, index_label="Particle ID")
-
-    print("\n\ncheck here")
 
 
 def vdb_to_npy():
@@ -597,7 +705,7 @@ def full_analysis(
     # print("Making individual videos")
     # sand_atlas.video.make_individual_videos(stl_foldername, f"{output_dir}/media/")
 
-    if not os.path.exists(f"{output_dir}/upload/{sand_type}-raw.tif"):
+    if raw_data is not None and not os.path.exists(f"{output_dir}/upload/{sand_type}-raw.tif"):
         sand_atlas.io.save_data(
             raw_data, f"{output_dir}/upload/{sand_type}-raw.tif", microns_per_voxel=microns_per_voxel
         )

@@ -157,7 +157,7 @@ def compactness(lab, volumes=None, boundingBoxes=None, centresOfMass=None, gauss
     Calculate the compactness of labeled particles in a 3D image. Compactness is defined as
     C = 36 * pi * V^2 / A^3, where V is the volume of the particle and A is the surface area. For a sphere,
     the compactness is 1.0. For other shapes, the compactness is less than 1.0. A value of 0.0 indicates an
-    infinitely thin particle.
+    infinitely thin particle, while ``numpy.nan`` indicates the surface area could not be computed reliably.
 
     Parameters:
     lab (numpy.ndarray): Labeled 3D image where each particle has a unique label.
@@ -197,6 +197,9 @@ def compactness(lab, volumes=None, boundingBoxes=None, centresOfMass=None, gauss
             grains, faces, _, _ = skimage.measure.marching_cubes(grainCubeFiltered, level=0.5)
             # compute surface
             surfaceArea = skimage.measure.mesh_surface_area(grains, faces)
+            if surfaceArea <= 0 or not numpy.isfinite(surfaceArea):
+                compactness[label] = numpy.nan
+                continue
             # compute psi
             compactness[label] = 36 * numpy.pi * volumes[label] ** 2 / surfaceArea**3
 

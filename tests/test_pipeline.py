@@ -1,42 +1,12 @@
-import importlib
-import sys
-import types
-
 import numpy as np
 
 
-def import_pipeline_with_fake_spam():
-    def make_labels_sequential(lab):
-        relabelled = np.zeros_like(lab)
-        for new_label, label in enumerate(sorted(label for label in np.unique(lab) if label != 0), start=1):
-            relabelled[lab == label] = new_label
-        return relabelled
-
-    fake_spam = types.ModuleType("spam")
-    fake_spam_label = types.ModuleType("spam.label")
-
-    fake_spam_label.boundingBoxes = lambda lab: None
-    fake_spam_label.centresOfMass = lambda lab, **kwargs: np.zeros((int(lab.max()) + 1, 3))
-    fake_spam_label.volumes = lambda lab, **kwargs: np.arange(int(lab.max()) + 1)
-    fake_spam_label.equivalentRadii = lambda lab, **kwargs: np.arange(int(lab.max()) + 1)
-    fake_spam_label.ellipseAxes = lambda lab, volumes: np.ones((int(lab.max()) + 1, 3))
-    fake_spam_label.trueSphericity = lambda lab, **kwargs: np.ones(int(lab.max()) + 1)
-    fake_spam_label.convexVolume = lambda lab, **kwargs: np.arange(int(lab.max()) + 1) + 1
-    fake_spam_label.label = types.SimpleNamespace(makeLabelsSequential=make_labels_sequential)
-
-    fake_spam.label = fake_spam_label
-
-    sys.modules["spam"] = fake_spam
-    sys.modules["spam.label"] = fake_spam_label
-
-    for module_name in ["sand_atlas.pipeline", "sand_atlas.particle", "sand_atlas.clean"]:
-        sys.modules.pop(module_name, None)
-
-    return importlib.import_module("sand_atlas.pipeline")
+import pytest
 
 
-def test_filter_particles_touching_edges_relabels_remaining_particles():
-    pipeline = import_pipeline_with_fake_spam()
+@pytest.mark.unit
+def test_filter_particles_touching_edges_relabels_remaining_particles(import_with_fake_spam):
+    pipeline = import_with_fake_spam()
 
     labelled_data = np.zeros((5, 5, 5), dtype=int)
     labelled_data[0, 2, 2] = 10
@@ -48,8 +18,9 @@ def test_filter_particles_touching_edges_relabels_remaining_particles():
     assert np.all(filtered[1:4, 1:4, 1:4] == 1)
 
 
-def test_get_particle_properties_excludes_edge_particles_from_summary(monkeypatch):
-    pipeline = import_pipeline_with_fake_spam()
+@pytest.mark.unit
+def test_get_particle_properties_excludes_edge_particles_from_summary(monkeypatch, import_with_fake_spam):
+    pipeline = import_with_fake_spam()
     recorded = {}
 
     def fake_volumes(lab, **kwargs):
@@ -60,10 +31,14 @@ def test_get_particle_properties_excludes_edge_particles_from_summary(monkeypatc
     monkeypatch.setattr(pipeline.spam.label, "boundingBoxes", lambda lab: None)
     monkeypatch.setattr(pipeline.spam.label, "centresOfMass", lambda lab, **kwargs: np.zeros((2, 3)))
     monkeypatch.setattr(pipeline.spam.label, "equivalentRadii", lambda lab, **kwargs: np.array([0, 1], dtype=float))
-    monkeypatch.setattr(pipeline.spam.label, "ellipseAxes", lambda lab, volumes: np.array([[0, 0, 0], [3, 2, 1]], dtype=float))
+    monkeypatch.setattr(
+        pipeline.spam.label, "ellipseAxes", lambda lab, volumes: np.array([[0, 0, 0], [3, 2, 1]], dtype=float)
+    )
     monkeypatch.setattr(pipeline.spam.label, "trueSphericity", lambda lab, **kwargs: np.array([0, 0.8], dtype=float))
     monkeypatch.setattr(pipeline.spam.label, "convexVolume", lambda lab, **kwargs: np.array([0, 10], dtype=float))
-    monkeypatch.setattr(pipeline.sand_atlas.particle, "compactness", lambda lab, **kwargs: np.array([0, 0.7], dtype=float))
+    monkeypatch.setattr(
+        pipeline.sand_atlas.particle, "compactness", lambda lab, **kwargs: np.array([0, 0.7], dtype=float)
+    )
 
     labelled_data = np.zeros((5, 5, 5), dtype=int)
     labelled_data[0, 2, 2] = 1
@@ -76,8 +51,9 @@ def test_get_particle_properties_excludes_edge_particles_from_summary(monkeypatc
     assert df.shape[0] == 1
 
 
-def test_get_particle_properties_returns_empty_dataframe_when_all_particles_touch_edges():
-    pipeline = import_pipeline_with_fake_spam()
+@pytest.mark.unit
+def test_get_particle_properties_returns_empty_dataframe_when_all_particles_touch_edges(import_with_fake_spam):
+    pipeline = import_with_fake_spam()
 
     labelled_data = np.zeros((4, 4, 4), dtype=int)
     labelled_data[0, 1:3, 1:3] = 1
@@ -97,3 +73,77 @@ def test_get_particle_properties_returns_empty_dataframe_when_all_particles_touc
         "Elongation (-)",
         "Compactness (-)",
     ]
+
+
+@pytest.mark.unit
+def test_get_particle_properties_handles_degenerate_sphericity_particles(monkeypatch, import_with_fake_spam):
+    pipeline = import_with_fake_spam()
+
+    monkeypatch.setattr(pipeline.spam.label, "boundingBoxes", lambda lab: None)
+    monkeypatch.setattr(pipeline.spam.label, "centresOfMass", lambda lab, **kwargs: np.zeros((int(lab.max()) + 1, 3)))
+    monkeypatch.setattr(pipeline.spam.label, "volumes", lambda lab, **kwargs: np.array([0, 8, 27], dtype=float))
+    monkeypatch.setattr(pipeline.spam.label, "equivalentRadii", lambda lab, **kwargs: np.array([0, 1, 2], dtype=float))
+    monkeypatch.setattr(
+        pipeline.spam.label,
+        "ellipseAxes",
+        lambda lab, volumes: np.array([[0, 0, 0], [3, 2, 1], [4, 3, 2]], dtype=float),
+    )
+
+    def fake_true_sphericity(lab, **kwargs):
+        max_label = int(lab.max())
+        if max_label > 1:
+            raise ValueError("Surface level must be within volume data range.")
+        if np.count_nonzero(lab == 1) == 8:
+            return np.array([0, 0.75], dtype=float)
+        raise ValueError("Surface level must be within volume data range.")
+
+    monkeypatch.setattr(pipeline.spam.label, "trueSphericity", fake_true_sphericity)
+    monkeypatch.setattr(pipeline.spam.label, "convexVolume", lambda lab, **kwargs: np.array([0, 10, 30], dtype=float))
+    monkeypatch.setattr(
+        pipeline.sand_atlas.particle, "compactness", lambda lab, **kwargs: np.array([0, 0.7, 0.8], dtype=float)
+    )
+
+    labelled_data = np.zeros((8, 8, 8), dtype=int)
+    labelled_data[1:3, 1:3, 1:3] = 1
+    labelled_data[4:7, 4:7, 4:7] = 2
+
+    df = pipeline.get_particle_properties(labelled_data, microns_per_voxel=1.0)
+
+    assert df.loc[1, "True Sphericity (-)"] == 0.75
+    assert np.isnan(df.loc[2, "True Sphericity (-)"])
+
+
+@pytest.mark.unit
+def test_get_particle_properties_handles_degenerate_compactness_particles(monkeypatch, import_with_fake_spam):
+    pipeline = import_with_fake_spam()
+
+    monkeypatch.setattr(pipeline.spam.label, "boundingBoxes", lambda lab: None)
+    monkeypatch.setattr(pipeline.spam.label, "centresOfMass", lambda lab, **kwargs: np.zeros((int(lab.max()) + 1, 3)))
+    monkeypatch.setattr(pipeline.spam.label, "volumes", lambda lab, **kwargs: np.array([0, 8, 27], dtype=float))
+    monkeypatch.setattr(pipeline.spam.label, "equivalentRadii", lambda lab, **kwargs: np.array([0, 1, 2], dtype=float))
+    monkeypatch.setattr(
+        pipeline.spam.label,
+        "ellipseAxes",
+        lambda lab, volumes: np.array([[0, 0, 0], [3, 2, 1], [4, 3, 2]], dtype=float),
+    )
+    monkeypatch.setattr(pipeline.spam.label, "trueSphericity", lambda lab, **kwargs: np.array([0, 0.75, 0.85], dtype=float))
+    monkeypatch.setattr(pipeline.spam.label, "convexVolume", lambda lab, **kwargs: np.array([0, 10, 30], dtype=float))
+
+    def fake_compactness(lab, **kwargs):
+        max_label = int(lab.max())
+        if max_label > 1:
+            raise ValueError("Surface level must be within volume data range.")
+        if np.count_nonzero(lab == 1) == 8:
+            return np.array([0, 0.7], dtype=float)
+        raise ValueError("Surface level must be within volume data range.")
+
+    monkeypatch.setattr(pipeline.sand_atlas.particle, "compactness", fake_compactness)
+
+    labelled_data = np.zeros((8, 8, 8), dtype=int)
+    labelled_data[1:3, 1:3, 1:3] = 1
+    labelled_data[4:7, 4:7, 4:7] = 2
+
+    df = pipeline.get_particle_properties(labelled_data, microns_per_voxel=1.0)
+
+    assert df.loc[1, "Compactness (-)"] == 0.7
+    assert np.isnan(df.loc[2, "Compactness (-)"])
