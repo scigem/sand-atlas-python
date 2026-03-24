@@ -264,7 +264,14 @@ def otsu_solid_fraction(volume, debug=False, maskValue=0):
     Estimate solid fraction from a global Otsu threshold applied to a 3D volume. High solid fraction means not many voids, lots of particles in contact and difficult to segment.
     """
     # Otsu is computed ignoring the mask
-    thresh = filters.threshold_otsu(volume[volume!=maskValue])
+    unmasked = volume[volume != maskValue]
+    if unmasked.size == 0:
+        solid_fraction = 0.0
+        if debug:
+            print(f"Otsu Solid Fraction = {solid_fraction}")
+        return solid_fraction
+
+    thresh = filters.threshold_otsu(unmasked)
     binary = volume > thresh
     solid_fraction = np.sum(binary) / volume.size
     if debug:
