@@ -4,6 +4,7 @@ set -euo pipefail
 
 json_dir="${JSON_DIR:-$HOME/code/sand-atlas/_data/json}"
 sands_dir="${SANDS_DIR:-/Volumes/PRJ-SciGEMData/sand-atlas/sands}"
+website_sands_dir="${WEBSITE_SANDS_DIR:-$HOME/code/sand-atlas/assets/sands}"
 
 if [[ ! -d "$json_dir" ]]; then
 	echo "JSON directory not found: $json_dir" >&2
@@ -12,6 +13,11 @@ fi
 
 if [[ ! -d "$sands_dir" ]]; then
 	echo "Sands directory not found: $sands_dir" >&2
+	exit 1
+fi
+
+if [[ ! -d "$website_sands_dir" ]]; then
+	echo "Website sands directory not found: $website_sands_dir" >&2
 	exit 1
 fi
 
@@ -39,9 +45,11 @@ for json_file in "$json_dir"/*.json; do
 	fi
 
 	output_file="$sands_dir/$sample_name/summary.csv"
+	website_output_file="$website_sands_dir/$sample_name.csv"
 
 	echo "Processing $sample_name"
 	sand_atlas_properties "$json_file" "$label_file" --output "$output_file"
+	cp "$output_file" "$website_output_file"
 	found_match=1
 done
 

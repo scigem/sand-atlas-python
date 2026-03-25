@@ -8,10 +8,13 @@ import pytest
 SCRIPT_PATH = Path(__file__).resolve().parents[1] / "calculate_all_particle_properties.sh"
 
 
-def _run_script(tmp_path, json_dir=None, sands_dir=None, path_prefix=None):
+def _run_script(tmp_path, json_dir=None, sands_dir=None, website_sands_dir=None, path_prefix=None):
     env = os.environ.copy()
     env["JSON_DIR"] = str(json_dir if json_dir is not None else tmp_path / "missing-json")
     env["SANDS_DIR"] = str(sands_dir if sands_dir is not None else tmp_path / "missing-sands")
+    env["WEBSITE_SANDS_DIR"] = str(
+        website_sands_dir if website_sands_dir is not None else tmp_path / "missing-website-sands"
+    )
     if path_prefix is not None:
         env["PATH"] = f"{path_prefix}{os.pathsep}{env['PATH']}"
     return subprocess.run(["bash", str(SCRIPT_PATH)], capture_output=True, text=True, env=env)
@@ -28,23 +31,40 @@ def test_script_fails_when_json_directory_missing(tmp_path):
 @pytest.mark.feature
 def test_script_fails_when_sands_directory_missing(tmp_path):
     json_dir = tmp_path / "json"
+    website_sands_dir = tmp_path / "website-sands"
     json_dir.mkdir()
+    website_sands_dir.mkdir()
 
-    result = _run_script(tmp_path, json_dir=json_dir)
+    result = _run_script(tmp_path, json_dir=json_dir, website_sands_dir=website_sands_dir)
 
     assert result.returncode == 1
     assert "Sands directory not found" in result.stderr
 
 
 @pytest.mark.feature
-def test_script_reports_no_matches_when_pairs_are_missing(tmp_path):
+def test_script_fails_when_website_sands_directory_missing(tmp_path):
     json_dir = tmp_path / "json"
     sands_dir = tmp_path / "sands"
     json_dir.mkdir()
     sands_dir.mkdir()
-    (json_dir / "sample.json").write_text("{}")
 
     result = _run_script(tmp_path, json_dir=json_dir, sands_dir=sands_dir)
+
+    assert result.returncode == 1
+    assert "Website sands directory not found" in result.stderr
+
+
+@pytest.mark.feature
+def test_script_reports_no_matches_when_pairs_are_missing(tmp_path):
+    json_dir = tmp_path / "json"
+    sands_dir = tmp_path / "sands"
+    website_sands_dir = tmp_path / "website-sands"
+    json_dir.mkdir()
+    sands_dir.mkdir()
+    website_sands_dir.mkdir()
+    (json_dir / "sample.json").write_text("{}")
+
+    result = _run_script(tmp_path, json_dir=json_dir, sands_dir=sands_dir, website_sands_dir=website_sands_dir)
 
     assert result.returncode == 1
     assert "No matching JSON/labelled TIFF pairs found" in result.stderr
@@ -55,9 +75,11 @@ def test_script_reports_no_matches_when_pairs_are_missing(tmp_path):
 def test_script_processes_matching_pairs_and_calls_properties(tmp_path):
     json_dir = tmp_path / "json"
     sands_dir = tmp_path / "sands"
+    website_sands_dir = tmp_path / "website-sands"
     bin_dir = tmp_path / "bin"
     json_dir.mkdir()
     sands_dir.mkdir()
+    website_sands_dir.mkdir()
     bin_dir.mkdir()
 
     sample_dir = sands_dir / "sample"
@@ -87,6 +109,7 @@ def test_script_processes_matching_pairs_and_calls_properties(tmp_path):
     env["CALL_LOG"] = str(call_log)
     env["JSON_DIR"] = str(json_dir)
     env["SANDS_DIR"] = str(sands_dir)
+    env["WEBSITE_SANDS_DIR"] = str(website_sands_dir)
     env["PATH"] = f"{bin_dir}{os.pathsep}{env['PATH']}"
 
     result = subprocess.run(["bash", str(SCRIPT_PATH)], capture_output=True, text=True, env=env)
@@ -97,3 +120,5 @@ def test_script_processes_matching_pairs_and_calls_properties(tmp_path):
         f"{json_dir / 'sample.json'} {sample_dir / 'labelled.tif'} --output {sample_dir / 'summary.csv'}"
     )
     assert (sample_dir / "summary.csv").exists()
+    assert (website_sands_dir / "sample.csv").exists()
+    assert (website_sands_dir / "sample.csv").read_text() == (sample_dir / "summary.csv").read_text()
